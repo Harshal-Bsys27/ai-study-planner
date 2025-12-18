@@ -1,103 +1,116 @@
-import { useState } from "react";
-import "./App.css";
+import React, { useState } from "react";
+import {
+  AppBar,
+  Toolbar,
+  Typography,
+  Container,
+  Grid,
+  Card,
+  CardContent,
+  Button,
+  TextField,
+  MenuItem,
+  FormControl,
+  InputLabel,
+  Select,
+} from "@mui/material";
 
 function App() {
   const [subject, setSubject] = useState("");
+  const [days, setDays] = useState(1);
+  const [hours, setHours] = useState(1);
   const [level, setLevel] = useState("Beginner");
-  const [days, setDays] = useState(7);
-  const [hours, setHours] = useState(2);
-  const [plan, setPlan] = useState(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
+  const [plan, setPlan] = useState([]);
 
   const generatePlan = async () => {
-    if (!subject.trim()) {
-      setError("Please enter a subject");
-      return;
+    // Placeholder plan logic, later replace with backend API call
+    const tempPlan = [];
+    for (let i = 1; i <= days; i++) {
+      tempPlan.push(
+        `Day ${i}: Study ${subject} (${hours} hour${hours > 1 ? "s" : ""}) - ${level} level`
+      );
     }
-
-    setLoading(true);
-    setError("");
-    setPlan(null);
-
-    try {
-      const response = await fetch("http://127.0.0.1:5000/api/generate-plan", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ subject, level, days, hours }),
-      });
-
-      if (!response.ok) throw new Error("Failed to generate plan");
-
-      const data = await response.json();
-      setPlan(data);
-    } catch (err) {
-      setError("Backend not reachable. Is Flask running?");
-    } finally {
-      setLoading(false);
-    }
+    setPlan(tempPlan);
   };
 
   return (
-    <div className="container">
-      <h1>📘 AI Study Planner</h1>
+    <div>
+      <AppBar position="static">
+        <Toolbar>
+          <Typography variant="h6">AI Study Planner</Typography>
+        </Toolbar>
+      </AppBar>
 
-      <div className="card">
-        <input
-          type="text"
-          placeholder="Enter subject (e.g. DSA, ML)"
-          value={subject}
-          onChange={(e) => setSubject(e.target.value)}
-        />
+      <Container sx={{ mt: 4 }}>
+        <Grid container spacing={2}>
+          <Grid item xs={12} md={3}>
+            <TextField
+              label="Subject"
+              fullWidth
+              value={subject}
+              onChange={(e) => setSubject(e.target.value)}
+            />
+          </Grid>
 
-        <label>
-          Skill Level:
-          <select value={level} onChange={(e) => setLevel(e.target.value)}>
-            <option>Beginner</option>
-            <option>Intermediate</option>
-            <option>Advanced</option>
-          </select>
-        </label>
+          <Grid item xs={12} md={2}>
+            <TextField
+              label="Days"
+              type="number"
+              fullWidth
+              value={days}
+              onChange={(e) => setDays(Number(e.target.value))}
+            />
+          </Grid>
 
-        <label>
-          Total Days:
-          <input
-            type="number"
-            min="1"
-            max="30"
-            value={days}
-            onChange={(e) => setDays(Number(e.target.value))}
-          />
-        </label>
+          <Grid item xs={12} md={2}>
+            <TextField
+              label="Hours/Day"
+              type="number"
+              fullWidth
+              value={hours}
+              onChange={(e) => setHours(Number(e.target.value))}
+            />
+          </Grid>
 
-        <label>
-          Hours per Day:
-          <input
-            type="number"
-            min="1"
-            max="12"
-            value={hours}
-            onChange={(e) => setHours(Number(e.target.value))}
-          />
-        </label>
+          <Grid item xs={12} md={3}>
+            <FormControl fullWidth>
+              <InputLabel>Level</InputLabel>
+              <Select
+                value={level}
+                label="Level"
+                onChange={(e) => setLevel(e.target.value)}
+              >
+                <MenuItem value="Beginner">Beginner</MenuItem>
+                <MenuItem value="Intermediate">Intermediate</MenuItem>
+                <MenuItem value="Advanced">Advanced</MenuItem>
+              </Select>
+            </FormControl>
+          </Grid>
 
-        <button onClick={generatePlan} disabled={loading}>
-          {loading ? "Generating..." : "Generate Study Plan"}
-        </button>
+          <Grid item xs={12} md={2}>
+            <Button
+              variant="contained"
+              fullWidth
+              sx={{ height: "100%" }}
+              onClick={generatePlan}
+            >
+              Generate
+            </Button>
+          </Grid>
+        </Grid>
 
-        {error && <p className="error">{error}</p>}
-      </div>
-
-      {plan && (
-        <div className="card plan">
-          <h2>Study Plan for {plan.subject}</h2>
-          <ul>
-            {plan.plan.map((item, index) => (
-              <li key={index}>{item}</li>
-            ))}
-          </ul>
-        </div>
-      )}
+        <Grid container spacing={2} sx={{ mt: 4 }}>
+          {plan.map((item, index) => (
+            <Grid item xs={12} md={4} key={index}>
+              <Card>
+                <CardContent>
+                  <Typography>{item}</Typography>
+                </CardContent>
+              </Card>
+            </Grid>
+          ))}
+        </Grid>
+      </Container>
     </div>
   );
 }
