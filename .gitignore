@@ -1,14 +1,53 @@
-# Backend Python
-backend/venv/
-backend/__pycache__/
+# --------------------------
+# Python / Backend
+# --------------------------
+# Virtual environment
+venv/
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.sqlite3
+*.db
+*.egg-info/
+*.egg
+
+# Python logs
+*.log
+
+# Environment variables
+.env
+*.env
+
+# Flask cache / instance folder
+instance/
 *.pyc
 
-# Frontend Node
+# --------------------------
+# Node / Frontend
+# --------------------------
+# Node modules
 frontend/node_modules/
+frontend/dist/
+frontend/build/
 
-# Environment
-.env
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
 
-# OS
+# Vite cache
+frontend/.vite/
+
+# Environment files
+frontend/.env
+frontend/.env.local
+frontend/.env.development
+frontend/.env.production
+frontend/.env.test
+
+# --------------------------
+# OS generated
+# --------------------------
 .DS_Store
 Thumbs.db

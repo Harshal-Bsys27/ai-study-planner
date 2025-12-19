@@ -27,22 +27,29 @@ function App() {
   const [plan, setPlan] = useState([]);
   const [loading, setLoading] = useState(false);
 
+  // ===============================
+  // GENERATE PLAN (BACKEND)
+  // ===============================
   const generatePlan = async () => {
     setLoading(true);
-    // Mock backend API call
-    const tempPlan = [];
-    for (let i = 1; i <= days; i++) {
-      const subtopics = [
-        { name: "Topic A", completed: false, hours },
-        { name: "Topic B", completed: false, hours },
-        { name: "Topic C", completed: false, hours },
-      ];
-      tempPlan.push({ day: i, topic: subject, hours, level, subtopics });
+    try {
+      const res = await fetch("http://localhost:5000/api/generate-plan", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ subject, days, hours, level }),
+      });
+
+      const data = await res.json();
+      setPlan(data.plan);
+    } catch (err) {
+      alert("Backend not reachable");
     }
-    setPlan(tempPlan);
     setLoading(false);
   };
 
+  // ===============================
+  // TOGGLE COMPLETION
+  // ===============================
   const toggleSubtopic = (dayIndex, subIndex) => {
     const updated = [...plan];
     updated[dayIndex].subtopics[subIndex].completed =
@@ -50,49 +57,62 @@ function App() {
     setPlan(updated);
   };
 
+  // ===============================
+  // PROGRESS CALCULATIONS
+  // ===============================
   const dayProgress = (day) => {
     const total = day.subtopics.length;
-    const completed = day.subtopics.filter(s => s.completed).length;
+    const completed = day.subtopics.filter((s) => s.completed).length;
     return Math.round((completed / total) * 100);
   };
 
   const overallProgress = () => {
     if (plan.length === 0) return 0;
-    const totalSubs = plan.reduce(
-      (sum, day) => sum + day.subtopics.length,
+    const total = plan.reduce((s, d) => s + d.subtopics.length, 0);
+    const done = plan.reduce(
+      (s, d) => s + d.subtopics.filter((x) => x.completed).length,
       0
     );
-    const completedSubs = plan.reduce(
-      (sum, day) => sum + day.subtopics.filter(s => s.completed).length,
-      0
-    );
-    return Math.round((completedSubs / totalSubs) * 100);
+    return Math.round((done / total) * 100);
   };
 
-  const smartAdjust = (dayIndex) => {
-    const updated = [...plan];
-    const day = updated[dayIndex];
-    const progress = dayProgress(day);
+  // ===============================
+  // SMART ADJUST (FIXED)
+  // ===============================
+  const smartAdjust = async (dayIndex) => {
+    try {
+      const res = await fetch("http://localhost:5000/api/smart-adjust", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(plan[dayIndex]), // 👈 FULL DAY OBJECT
+      });
 
-    if (progress < 50) {
-      day.subtopics.forEach(sub => {
-        if (!sub.completed) sub.hours = (sub.hours || hours) + 1;
-      });
-    } else if (progress >= 50 && progress < 80) {
-      day.subtopics.forEach(sub => {
-        if (!sub.completed) sub.hours = (sub.hours || hours) + 0.5;
-      });
+      const data = await res.json();
+
+      const updated = [...plan];
+      updated[dayIndex].subtopics = data.subtopics;
+      updated[dayIndex].progress = data.progress;
+      updated[dayIndex].status = data.status;
+
+      setPlan(updated);
+    } catch {
+      alert("Smart adjust failed");
     }
-    setPlan(updated);
   };
 
-  const dayStatus = (day) => {
-    const progress = dayProgress(day);
-    if (progress < 50) return { text: "Behind", color: red[500] };
-    if (progress < 80) return { text: "On Track", color: orange[500] };
+  // ===============================
+  // STATUS COLOR
+  // ===============================
+  const statusInfo = (day) => {
+    const p = dayProgress(day);
+    if (p < 50) return { text: "Behind", color: red[500] };
+    if (p < 80) return { text: "On Track", color: orange[500] };
     return { text: "Ahead", color: green[500] };
   };
 
+  // ===============================
+  // UI
+  // ===============================
   return (
     <>
       <AppBar position="static">
@@ -102,6 +122,7 @@ function App() {
       </AppBar>
 
       <Container sx={{ mt: 4 }}>
+        {/* CONTROLS */}
         <Grid container spacing={2}>
           <Grid item xs={12} md={3}>
             <FormControl fullWidth>
@@ -125,7 +146,7 @@ function App() {
               type="number"
               fullWidth
               value={days}
-              onChange={(e) => setDays(Number(e.target.value))}
+              onChange={(e) => setDays(+e.target.value)}
             />
           </Grid>
 
@@ -135,7 +156,7 @@ function App() {
               type="number"
               fullWidth
               value={hours}
-              onChange={(e) => setHours(Number(e.target.value))}
+              onChange={(e) => setHours(+e.target.value)}
             />
           </Grid>
 
@@ -155,81 +176,74 @@ function App() {
           </Grid>
 
           <Grid item xs={12} md={2}>
-            <Button
-              variant="contained"
-              fullWidth
-              sx={{ height: "100%" }}
-              onClick={generatePlan}
-              disabled={loading}
-            >
+            <Button fullWidth variant="contained" onClick={generatePlan}>
               {loading ? "Generating..." : "Generate"}
             </Button>
           </Grid>
         </Grid>
 
+        {/* OVERALL PROGRESS */}
         {plan.length > 0 && (
           <Card sx={{ mt: 4 }}>
             <CardContent>
-              <Typography variant="h6">
+              <Typography>
                 Overall Progress: {overallProgress()}%
               </Typography>
               <LinearProgress
                 variant="determinate"
                 value={overallProgress()}
-                sx={{ height: 10, borderRadius: 5, mt: 1 }}
-                color="primary"
+                sx={{ height: 10, borderRadius: 5 }}
               />
             </CardContent>
           </Card>
         )}
 
+        {/* DAY CARDS */}
         <Grid container spacing={3} sx={{ mt: 2 }}>
-          {plan.map((day, dayIndex) => {
-            const status = dayStatus(day);
+          {plan.map((day, i) => {
+            const status = statusInfo(day);
             return (
-              <Grid item xs={12} md={4} key={dayIndex}>
+              <Grid item xs={12} md={4} key={i}>
                 <Card>
                   <CardContent>
                     <Typography variant="h6">
                       Day {day.day} — {day.topic}
                     </Typography>
 
-                    <Typography variant="body2" sx={{ color: status.color }}>
-                      ⏱ {day.hours} hrs | 🎯 {day.level} | Status: {status.text}
+                    <Typography sx={{ color: status.color }}>
+                      {status.text} • {dayProgress(day)}%
                     </Typography>
 
-                    <Typography sx={{ mt: 1 }}>
-                      Progress: {dayProgress(day)}%
-                    </Typography>
                     <LinearProgress
                       variant="determinate"
                       value={dayProgress(day)}
                       sx={{
                         height: 8,
                         borderRadius: 4,
-                        mb: 1,
-                        backgroundColor: "#f0f0f0",
-                        "& .MuiLinearProgress-bar": { backgroundColor: status.color },
+                        my: 1,
+                        "& .MuiLinearProgress-bar": {
+                          backgroundColor: status.color,
+                        },
                       }}
                     />
 
-                    <Box sx={{ mt: 1 }}>
-                      {day.subtopics.map((sub, subIndex) => (
+                    <Box>
+                      {day.subtopics.map((s, j) => (
                         <Chip
-                          key={subIndex}
-                          label={`${sub.name} (${sub.hours || hours}h)`}
+                          key={j}
+                          label={`${s.name} (${s.hours}h)`}
                           clickable
-                          onClick={() => toggleSubtopic(dayIndex, subIndex)}
-                          color={sub.completed ? "success" : "default"}
+                          onClick={() => toggleSubtopic(i, j)}
+                          color={s.completed ? "success" : "default"}
                           sx={{ mr: 1, mb: 1 }}
                         />
                       ))}
                     </Box>
 
                     <Button
-                      variant="outlined"
                       sx={{ mt: 1 }}
-                      onClick={() => smartAdjust(dayIndex)}
+                      variant="outlined"
+                      onClick={() => smartAdjust(i)}
                     >
                       Smart Adjust
                     </Button>

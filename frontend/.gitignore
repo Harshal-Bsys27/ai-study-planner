@@ -1,40 +1,53 @@
-# Logs
-logs
-*.log
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-pnpm-debug.log*
-lerna-debug.log*
-
-node_modules
-dist
-dist-ssr
-*.local
-
-# Editor directories and files
-.vscode/*
-!.vscode/extensions.json
-.idea
-.DS_Store
-*.suo
-*.ntvs*
-*.njsproj
-*.sln
-*.sw?
-
-# Python
+# --------------------------
+# Python / Backend
+# --------------------------
+# Virtual environment
 venv/
 __pycache__/
-*.pyc
+*.py[cod]
+*.pyo
+*.pyd
+*.sqlite3
+*.db
+*.egg-info/
+*.egg
 
-# Node
-node_modules/
+# Python logs
+*.log
 
 # Environment variables
 .env
+*.env
 
-# OS files
+# Flask cache / instance folder
+instance/
+*.pyc
+
+# --------------------------
+# Node / Frontend
+# --------------------------
+# Node modules
+frontend/node_modules/
+frontend/dist/
+frontend/build/
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Vite cache
+frontend/.vite/
+
+# Environment files
+frontend/.env
+frontend/.env.local
+frontend/.env.development
+frontend/.env.production
+frontend/.env.test
+
+# --------------------------
+# OS generated
+# --------------------------
 .DS_Store
 Thumbs.db
-
