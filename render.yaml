@@ -1,0 +1,25 @@
+services:
+  - type: web
+    name: ai-study-planner-backend
+    env: python
+    buildCommand: pip install -r backend/requirements.txt
+    startCommand: cd backend && gunicorn app:app
+    envVars:
+      - key: FLASK_ENV
+        value: production
+      - key: SECRET_KEY
+        generateValue: true
+      - key: CORS_ORIGINS
+        value: https://ai-study-planner.onrender.com
+    disk:
+      name: study_planner_db
+      mountPath: /opt/render/project/backend
+      sizeGB: 1
+
+  - type: static
+    name: ai-study-planner-frontend
+    buildCommand: cd frontend && npm install && npm run build
+    staticPublishPath: frontend/dist
+    envVars:
+      - key: VITE_API_URL
+        value: https://ai-study-planner-backend.onrender.com/api

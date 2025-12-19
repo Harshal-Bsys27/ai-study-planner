@@ -1,22 +1,28 @@
+import sys
+import os
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from datetime import datetime
-import os
 import jwt
 from functools import wraps
 from dotenv import load_dotenv
+
 from models import db, User, StudyPlan, UserProgress, StudyNotes, StudySession
-from config import Config
+from config import get_config
 
 load_dotenv()
 
-def create_app():
-    """Create and configure Flask app"""
-    app = Flask(__name__)
-    app.config.from_object(Config)
+def create_app(config_name=None):
+    """Application factory"""
+    if config_name is None:
+        config_name = os.getenv('FLASK_ENV', 'development')
     
+    app = Flask(__name__)
+    app.config.from_object(get_config(config_name))
+    
+    # Initialize extensions
     db.init_app(app)
-    CORS(app, origins="*")
+    CORS(app, origins=os.getenv('CORS_ORIGINS', '*').split(','))
 
     # ===============================
     # AUTH DECORATOR
@@ -129,7 +135,7 @@ def create_app():
     @app.route('/api/generate-plan', methods=['POST'])
     @token_required
     def generate_plan(current_user_id):
-        """Generate a new study plan"""
+        """Generate new study plan"""
         try:
             data = request.json
             subject = data.get('subject', 'DSA')
@@ -137,7 +143,17 @@ def create_app():
             hours = float(data.get('hours', 2))
             level = data.get('level', 'Beginner')
 
-            plan_data = create_simple_plan(subject, days, hours, level)
+            # Create simple plan data
+            plan_data = [
+                {
+                    'day': i,
+                    'topics': [
+                        {'name': f'Topic {j}', 'completed': False, 'hours': hours}
+                        for j in range(1, 3)
+                    ]
+                }
+                for i in range(1, days + 1)
+            ]
 
             new_plan = StudyPlan(
                 user_id=current_user_id,
@@ -156,7 +172,6 @@ def create_app():
                 'subject': subject,
                 'level': level,
                 'days': days,
-                'hours_per_day': hours,
                 'plan': plan_data,
                 'total_hours': days * hours
             }), 201
@@ -168,7 +183,7 @@ def create_app():
     @app.route('/api/plans/<int:plan_id>', methods=['GET'])
     @token_required
     def get_plan(current_user_id, plan_id):
-        """Get specific study plan"""
+        """Get specific plan"""
         try:
             plan = StudyPlan.query.filter_by(id=plan_id, user_id=current_user_id).first()
             if not plan:
@@ -179,7 +194,6 @@ def create_app():
                 'subject': plan.subject,
                 'level': plan.level,
                 'days': plan.days,
-                'hours_per_day': plan.hours_per_day,
                 'completion_percentage': plan.completion_percentage,
                 'plan': plan.plan_data,
                 'created_at': plan.created_at.isoformat()
@@ -194,7 +208,6 @@ def create_app():
         """Update topic progress"""
         try:
             plan = StudyPlan.query.filter_by(id=plan_id, user_id=current_user_id).first()
-            
             if not plan:
                 return jsonify({'error': 'Plan not found'}), 404
 
@@ -210,7 +223,6 @@ def create_app():
 
             total_topics = sum(len(day['topics']) for day in plan.plan_data)
             completed_topics = UserProgress.query.filter_by(plan_id=plan_id, completed=True).count()
-            
             plan.completion_percentage = (completed_topics / total_topics * 100) if total_topics > 0 else 0
             db.session.commit()
 
@@ -250,7 +262,7 @@ def create_app():
     @app.route('/api/plans/<int:plan_id>/notes', methods=['GET'])
     @token_required
     def get_notes(current_user_id, plan_id):
-        """Get all notes for a plan"""
+        """Get notes for plan"""
         try:
             plan = StudyPlan.query.filter_by(id=plan_id, user_id=current_user_id).first()
             if not plan:
@@ -315,57 +327,23 @@ def create_app():
     return app
 
 
-def create_simple_plan(subject, days, hours, level):
-    """Create a simple study plan structure"""
-    
-    curriculum = {
-        "DSA": {
-            "Beginner": ["Arrays & Strings", "Linked Lists", "Stacks & Queues", "Trees", "Sorting", "Searching", "Hash Tables", "Graphs"],
-            "Intermediate": ["Dynamic Programming", "Advanced Trees", "Graph Algorithms", "Greedy Algorithms", "Backtracking", "Bit Manipulation"],
-            "Advanced": ["NP-Complete Problems", "Advanced DP", "Network Flow", "String Algorithms", "Computational Geometry"]
-        },
-        "Python": {
-            "Beginner": ["Variables & Data Types", "Control Flow", "Functions", "Lists & Dictionaries", "String Operations", "File I/O"],
-            "Intermediate": ["OOP Basics", "Modules & Packages", "Exception Handling", "Decorators", "Generators"],
-            "Advanced": ["Metaclasses", "Async Programming", "Performance Optimization", "Testing & Debugging"]
-        },
-        "Web Dev": {
-            "Beginner": ["HTML Basics", "CSS Styling", "JavaScript Fundamentals", "DOM Manipulation", "Forms & Validation"],
-            "Intermediate": ["React Basics", "State Management", "API Integration", "Routing", "Styling Solutions"],
-            "Advanced": ["Performance Optimization", "Testing", "Deployment", "Security", "Advanced Patterns"]
-        }
-    }
-
-    topics = curriculum.get(subject, {}).get(level, [])
-    
-    plan = []
-    topics_per_day = max(1, len(topics) // days)
-    
-    for day in range(1, days + 1):
-        start_idx = (day - 1) * topics_per_day
-        end_idx = start_idx + topics_per_day if day < days else len(topics)
-        day_topics = topics[start_idx:end_idx]
-        
-        plan.append({
-            'day': day,
-            'topics': [{'name': t, 'completed': False, 'hours': hours} for t in day_topics]
-        })
-    
-    return plan
-
-
 if __name__ == '__main__':
-    app = create_app()
+    env = os.getenv('FLASK_ENV', 'development')
+    app = create_app(env)
     
     with app.app_context():
         db.create_all()
         print("\n" + "="*60)
         print("✅ AI Study Planner Backend Started")
         print("="*60)
-        print("🔗 API: http://localhost:5000/api")
-        print("❤️  Health: http://localhost:5000/api/health")
-        print("📝 Register: POST /api/register")
-        print("🔐 Login: POST /api/login")
+        print(f"🌍 Environment: {env.upper()}")
+        print(f"🗄️  Database: {'SQLite' if env == 'development' else 'PostgreSQL'}")
+        print(f"🔗 API: http://localhost:5000/api")
+        print(f"❤️  Health: http://localhost:5000/api/health")
         print("="*60 + "\n")
     
-    app.run(debug=True, port=5000)
+    if env == 'production':
+        # For production, gunicorn will handle this
+        pass
+    else:
+        app.run(debug=True, port=5000)
