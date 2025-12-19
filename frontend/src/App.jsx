@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   AppBar,
   Toolbar,
@@ -17,6 +17,8 @@ import {
   Box,
   LinearProgress,
   Paper,
+  Snackbar,
+  Alert,
 } from "@mui/material";
 
 import {
@@ -29,8 +31,9 @@ import {
   XAxis,
   YAxis,
   ResponsiveContainer,
-  Legend,
 } from "recharts";
+
+import Auth from "./pages/Auth";
 
 const COLORS = {
   ahead: "#10B981",
@@ -43,48 +46,108 @@ const COLORS = {
 };
 
 function App() {
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [subject, setSubject] = useState("DSA");
   const [days, setDays] = useState(3);
   const [hours, setHours] = useState(2);
   const [level, setLevel] = useState("Beginner");
   const [plan, setPlan] = useState([]);
+  const [currentPlanId, setCurrentPlanId] = useState(null);
+  const [snackbar, setSnackbar] = useState({ open: false, message: '', type: 'success' });
+
+  // Check if user is already logged in
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (token) {
+      setIsAuthenticated(true);
+    }
+  }, []);
+
+  // Get token from localStorage
+  const getToken = () => {
+    return localStorage.getItem('token');
+  };
+
+  // Logout
+  const handleLogout = () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    setIsAuthenticated(false);
+    setPlan([]);
+  };
+
+  // Show snackbar
+  const showSnackbar = (message, type = 'success') => {
+    setSnackbar({ open: true, message, type });
+  };
 
   // ===============================
   // GENERATE PLAN
   // ===============================
   const generatePlan = async () => {
-    const res = await fetch("http://localhost:5000/api/generate-plan", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ subject, days, hours, level }),
-    });
-    const data = await res.json();
+    try {
+      const res = await fetch("http://localhost:5000/api/generate-plan", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${getToken()}`
+        },
+        body: JSON.stringify({ subject, days, hours, level }),
+      });
 
-    const enriched = data.plan.map((d) => ({
-      ...d,
-      baseHours: d.hours,
-      status: "Behind",
-    }));
+      if (!res.ok) {
+        if (res.status === 401) {
+          handleLogout();
+        }
+        return;
+      }
 
-    setPlan(enriched);
+      const data = await res.json();
+      setPlan(data.plan || []);
+      setCurrentPlanId(data.id);
+      showSnackbar('✅ Study plan generated successfully!');
+    } catch (error) {
+      showSnackbar('Error generating plan', 'error');
+    }
   };
 
   // ===============================
   // TOGGLE COMPLETION
   // ===============================
-  const toggleSubtopic = (dayIndex, subIndex) => {
+  const toggleSubtopic = async (dayIndex, subIndex) => {
     const updated = [...plan];
-    updated[dayIndex].subtopics[subIndex].completed =
-      !updated[dayIndex].subtopics[subIndex].completed;
-    setPlan(updated);
+    updated[dayIndex].topics[subIndex].completed =
+      !updated[dayIndex].topics[subIndex].completed;
+
+    try {
+      await fetch(`http://localhost:5000/api/plans/1/progress`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${getToken()}`
+        },
+        body: JSON.stringify({
+          day: dayIndex + 1,
+          topic: updated[dayIndex].topics[subIndex].name,
+          completed: updated[dayIndex].topics[subIndex].completed,
+        }),
+      });
+
+      setPlan(updated);
+      
+      const action = updated[dayIndex].topics[subIndex].completed ? 'completed' : 'uncompleted';
+      showSnackbar(`✅ Topic ${action}!`);
+    } catch (error) {
+      showSnackbar('Error updating progress', 'error');
+    }
   };
 
   // ===============================
   // PROGRESS
   // ===============================
   const dayProgress = (day) => {
-    const total = day.subtopics.length;
-    const completed = day.subtopics.filter((s) => s.completed).length;
+    const total = day.topics.length;
+    const completed = day.topics.filter((s) => s.completed).length;
     return total === 0 ? 0 : Math.round((completed / total) * 100);
   };
 
@@ -99,60 +162,32 @@ function App() {
   };
 
   // ===============================
-  // SMART ADJUST
-  // ===============================
-  const smartAdjust = async (dayIndex) => {
-    const res = await fetch("http://localhost:5000/api/smart-adjust", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(plan[dayIndex]),
-    });
-
-    const data = await res.json();
-    const updated = [...plan];
-
-    updated[dayIndex].subtopics = data.subtopics;
-    updated[dayIndex].status = statusInfo(updated[dayIndex]).text;
-
-    setPlan(updated);
-  };
-
-  // ===============================
-  // CHART DATA (DYNAMIC)
+  // CHART DATA
   // ===============================
   const barData = plan.map((day) => ({
     name: `Day ${day.day}`,
     progress: dayProgress(day),
-    completed: day.subtopics.filter((x) => x.completed).length,
-    total: day.subtopics.length,
   }));
 
   const pieData = [
     {
       name: "Completed",
-      value:
-        plan.reduce(
-          (s, d) =>
-            s +
-            d.subtopics.filter((x) => x.completed).length,
-          0
-        ) || 0,
+      value: plan.reduce((s, d) => s + d.topics.filter((x) => x.completed).length, 0) || 0,
     },
     {
       name: "Remaining",
-      value:
-        plan.reduce(
-          (s, d) =>
-            s +
-            d.subtopics.filter((x) => !x.completed).length,
-          0
-        ) || 0,
+      value: plan.reduce((s, d) => s + d.topics.filter((x) => !x.completed).length, 0) || 0,
     },
   ];
 
   const totalProgress = pieData[0].value + pieData[1].value > 0 
     ? Math.round((pieData[0].value / (pieData[0].value + pieData[1].value)) * 100)
     : 0;
+
+  // Show auth page if not logged in
+  if (!isAuthenticated) {
+    return <Auth onLoginSuccess={() => setIsAuthenticated(true)} />;
+  }
 
   // ===============================
   // UI
@@ -175,40 +210,17 @@ function App() {
             >
               📚 AI Study Planner
             </Typography>
-            <Typography
-              variant="caption"
-              sx={{ display: "block", opacity: 0.9, mt: 0.5 }}
-            >
-              Personalized • Adaptive • Human-centric
-            </Typography>
           </Box>
 
           <Button 
             color="inherit"
+            onClick={handleLogout}
             sx={{ 
               textTransform: "capitalize",
               "&:hover": { background: "rgba(255,255,255,0.1)" }
             }}
           >
-            Analytics
-          </Button>
-          <Button 
-            color="inherit"
-            sx={{ 
-              textTransform: "capitalize",
-              "&:hover": { background: "rgba(255,255,255,0.1)" }
-            }}
-          >
-            History
-          </Button>
-          <Button 
-            color="inherit"
-            sx={{ 
-              textTransform: "capitalize",
-              "&:hover": { background: "rgba(255,255,255,0.1)" }
-            }}
-          >
-            Settings
+            🚪 Logout
           </Button>
         </Toolbar>
       </AppBar>
@@ -226,7 +238,7 @@ function App() {
           }}
         >
           <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>
-            Plan Your Study
+            📋 Plan Your Study
           </Typography>
           <Grid container spacing={2}>
             <Grid item xs={12} sm={6} md={3}>
@@ -234,15 +246,12 @@ function App() {
                 <InputLabel>Subject</InputLabel>
                 <Select
                   value={subject}
-                  onChange={(e) =>
-                    setSubject(e.target.value)
-                  }
+                  onChange={(e) => setSubject(e.target.value)}
                   sx={{ borderRadius: 2 }}
                 >
-                  <MenuItem value="DSA">DSA</MenuItem>
-                  <MenuItem value="ML">ML</MenuItem>
-                  <MenuItem value="Python">Python</MenuItem>
-                  <MenuItem value="AI">AI</MenuItem>
+                  <MenuItem value="DSA">📊 DSA</MenuItem>
+                  <MenuItem value="Python">🐍 Python</MenuItem>
+                  <MenuItem value="Web Dev">🌐 Web Dev</MenuItem>
                 </Select>
               </FormControl>
             </Grid>
@@ -253,10 +262,7 @@ function App() {
                 type="number"
                 fullWidth
                 value={days}
-                onChange={(e) =>
-                  setDays(+e.target.value)
-                }
-                sx={{ "& .MuiOutlinedInput-root": { borderRadius: 2 } }}
+                onChange={(e) => setDays(+e.target.value)}
               />
             </Grid>
 
@@ -266,10 +272,7 @@ function App() {
                 type="number"
                 fullWidth
                 value={hours}
-                onChange={(e) =>
-                  setHours(+e.target.value)
-                }
-                sx={{ "& .MuiOutlinedInput-root": { borderRadius: 2 } }}
+                onChange={(e) => setHours(+e.target.value)}
               />
             </Grid>
 
@@ -278,20 +281,12 @@ function App() {
                 <InputLabel>Level</InputLabel>
                 <Select
                   value={level}
-                  onChange={(e) =>
-                    setLevel(e.target.value)
-                  }
+                  onChange={(e) => setLevel(e.target.value)}
                   sx={{ borderRadius: 2 }}
                 >
-                  <MenuItem value="Beginner">
-                    Beginner
-                  </MenuItem>
-                  <MenuItem value="Intermediate">
-                    Intermediate
-                  </MenuItem>
-                  <MenuItem value="Advanced">
-                    Advanced
-                  </MenuItem>
+                  <MenuItem value="Beginner">🌱 Beginner</MenuItem>
+                  <MenuItem value="Intermediate">📈 Intermediate</MenuItem>
+                  <MenuItem value="Advanced">🚀 Advanced</MenuItem>
                 </Select>
               </FormControl>
             </Grid>
@@ -305,10 +300,6 @@ function App() {
                   borderRadius: 2,
                   fontWeight: 600,
                   py: 1.5,
-                  textTransform: "capitalize",
-                  "&:hover": {
-                    boxShadow: `0 8px 24px ${COLORS.primary}30`,
-                  },
                 }}
                 onClick={generatePlan}
               >
@@ -323,49 +314,24 @@ function App() {
           <>
             <Grid container spacing={3} sx={{ mb: 4 }}>
               <Grid item xs={12} md={4}>
-                <Card 
-                  sx={{ 
-                    borderRadius: 3,
-                    boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
-                    height: "100%",
-                  }}
-                >
+                <Card sx={{ borderRadius: 3, boxShadow: "0 2px 8px rgba(0,0,0,0.08)" }}>
                   <CardContent>
-                    <Typography 
-                      variant="h6" 
-                      sx={{ fontWeight: 600, mb: 2 }}
-                    >
+                    <Typography variant="h6" sx={{ fontWeight: 600, mb: 2 }}>
                       📊 Overall Progress
                     </Typography>
                     <Box sx={{ display: "flex", justifyContent: "center", mb: 2 }}>
-                      <ResponsiveContainer
-                        width="100%"
-                        height={180}
-                      >
+                      <ResponsiveContainer width="100%" height={180}>
                         <PieChart>
-                          <Pie
-                            data={pieData}
-                            dataKey="value"
-                            innerRadius={50}
-                            outerRadius={80}
-                          >
+                          <Pie data={pieData} dataKey="value" innerRadius={50} outerRadius={80}>
                             <Cell fill={COLORS.ahead} />
                             <Cell fill="#E2E8F0" />
                           </Pie>
-                          <Tooltip 
-                            contentStyle={{ 
-                              borderRadius: 8,
-                              border: `1px solid ${COLORS.primary}`,
-                            }}
-                          />
+                          <Tooltip />
                         </PieChart>
                       </ResponsiveContainer>
                     </Box>
                     <Box sx={{ textAlign: "center" }}>
-                      <Typography 
-                        variant="h4" 
-                        sx={{ fontWeight: 700, color: COLORS.primary }}
-                      >
+                      <Typography variant="h4" sx={{ fontWeight: 700, color: COLORS.primary }}>
                         {totalProgress}%
                       </Typography>
                       <Typography variant="caption" color="textSecondary">
@@ -377,44 +343,17 @@ function App() {
               </Grid>
 
               <Grid item xs={12} md={8}>
-                <Card 
-                  sx={{ 
-                    borderRadius: 3,
-                    boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
-                    height: "100%",
-                  }}
-                >
+                <Card sx={{ borderRadius: 3, boxShadow: "0 2px 8px rgba(0,0,0,0.08)" }}>
                   <CardContent>
-                    <Typography 
-                      variant="h6" 
-                      sx={{ fontWeight: 600, mb: 2 }}
-                    >
+                    <Typography variant="h6" sx={{ fontWeight: 600, mb: 2 }}>
                       📈 Day-wise Progress
                     </Typography>
-                    <ResponsiveContainer
-                      width="100%"
-                      height={280}
-                    >
-                      <BarChart 
-                        data={barData}
-                        margin={{ top: 20, right: 30, left: 0, bottom: 0 }}
-                      >
-                        <XAxis dataKey="name" stroke="#94A3B8" />
-                        <YAxis stroke="#94A3B8" />
-                        <Tooltip 
-                          contentStyle={{
-                            borderRadius: 8,
-                            border: `1px solid ${COLORS.primary}`,
-                            background: "#FFF",
-                          }}
-                          formatter={(value) => `${value}%`}
-                        />
-                        <Bar
-                          dataKey="progress"
-                          fill={COLORS.secondary}
-                          radius={[8, 8, 0, 0]}
-                          isAnimationActive
-                        />
+                    <ResponsiveContainer width="100%" height={280}>
+                      <BarChart data={barData}>
+                        <XAxis dataKey="name" />
+                        <YAxis />
+                        <Tooltip formatter={(value) => `${value}%`} />
+                        <Bar dataKey="progress" fill={COLORS.secondary} radius={[8, 8, 0, 0]} />
                       </BarChart>
                     </ResponsiveContainer>
                   </CardContent>
@@ -427,10 +366,7 @@ function App() {
         {/* DAY CARDS */}
         {plan.length > 0 && (
           <Box>
-            <Typography 
-              variant="h6" 
-              sx={{ fontWeight: 600, mb: 3, color: COLORS.primary }}
-            >
+            <Typography variant="h6" sx={{ fontWeight: 600, mb: 3, color: COLORS.primary }}>
               📅 Your Study Plan
             </Typography>
             <Grid container spacing={3}>
@@ -438,44 +374,20 @@ function App() {
                 const status = statusInfo(day);
                 return (
                   <Grid item xs={12} md={4} key={i}>
-                    <Card
-                      sx={{
-                        borderRadius: 3,
-                        boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
-                        border: `2px solid ${status.color}20`,
-                        transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
-                        "&:hover": {
-                          transform: "translateY(-8px)",
-                          boxShadow: `0 12px 24px ${status.color}25`,
-                          border: `2px solid ${status.color}`,
-                        },
-                      }}
-                    >
+                    <Card sx={{
+                      borderRadius: 3,
+                      border: `2px solid ${status.color}20`,
+                      transition: "all 0.3s",
+                      "&:hover": { transform: "translateY(-8px)", boxShadow: "0 12px 24px rgba(0,0,0,0.15)" },
+                    }}>
                       <CardContent>
                         <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "start", mb: 2 }}>
                           <Box>
-                            <Typography 
-                              variant="h6"
-                              sx={{ fontWeight: 700, color: COLORS.primary }}
-                            >
+                            <Typography variant="h6" sx={{ fontWeight: 700, color: COLORS.primary }}>
                               Day {day.day}
                             </Typography>
-                            <Typography 
-                              variant="body2"
-                              sx={{ color: "#64748B", fontWeight: 500 }}
-                            >
-                              {day.topic}
-                            </Typography>
                           </Box>
-                          <Chip
-                            label={status.text}
-                            sx={{
-                              background: status.color,
-                              color: "#fff",
-                              fontWeight: 600,
-                              fontSize: "0.75rem",
-                            }}
-                          />
+                          <Chip label={status.text} sx={{ background: status.color, color: "#fff" }} />
                         </Box>
 
                         <Box sx={{ mb: 2 }}>
@@ -487,71 +399,33 @@ function App() {
                               {dayProgress(day)}%
                             </Typography>
                           </Box>
-                          <LinearProgress
-                            variant="determinate"
-                            value={dayProgress(day)}
-                            sx={{
-                              height: 10,
-                              borderRadius: 8,
-                              background: "#E2E8F0",
-                              "& .MuiLinearProgress-bar": {
-                                background: status.color,
-                                borderRadius: 8,
-                              },
-                            }}
-                          />
+                          <LinearProgress value={dayProgress(day)} variant="determinate" sx={{ height: 10, borderRadius: 8 }} />
                         </Box>
 
                         <Box sx={{ mb: 2 }}>
                           <Typography variant="caption" sx={{ fontWeight: 600, display: "block", mb: 1 }}>
-                            Topics ({day.subtopics.filter(s => s.completed).length}/{day.subtopics.length})
+                            Topics ({day.topics.filter(s => s.completed).length}/{day.topics.length})
                           </Typography>
                           <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1 }}>
-                            {day.subtopics.map((s, j) => (
+                            {day.topics.map((s, j) => (
                               <Chip
                                 key={j}
-                                label={`${s.name} (${s.hours}h)`}
-                                clickable
-                                onClick={() =>
-                                  toggleSubtopic(i, j)
-                                }
+                                label={s.name}
+                                onClick={() => toggleSubtopic(i, j)}
                                 sx={{
-                                  background: s.completed 
-                                    ? COLORS.ahead 
-                                    : "#F1F5F9",
+                                  background: s.completed ? COLORS.ahead : "#F1F5F9",
                                   color: s.completed ? "#fff" : "#475569",
+                                  cursor: 'pointer',
                                   fontWeight: 500,
-                                  transition: "all 0.2s",
-                                  "&:hover": {
-                                    transform: "scale(1.05)",
-                                  },
+                                  transition: 'all 0.2s',
+                                  '&:hover': {
+                                    transform: 'scale(1.05)',
+                                  }
                                 }}
                               />
                             ))}
                           </Box>
                         </Box>
-
-                        <Button
-                          fullWidth
-                          variant="outlined"
-                          sx={{
-                            borderColor: COLORS.primary,
-                            color: COLORS.primary,
-                            borderRadius: 2,
-                            fontWeight: 600,
-                            textTransform: "capitalize",
-                            "&:hover": {
-                              background: `${COLORS.primary}08`,
-                              borderColor: COLORS.secondary,
-                              color: COLORS.secondary,
-                            },
-                          }}
-                          onClick={() =>
-                            smartAdjust(i)
-                          }
-                        >
-                          ⚡ Smart Adjust
-                        </Button>
                       </CardContent>
                     </Card>
                   </Grid>
@@ -562,25 +436,28 @@ function App() {
         )}
 
         {plan.length === 0 && (
-          <Paper
-            elevation={0}
-            sx={{
-              p: 8,
-              textAlign: "center",
-              background: COLORS.cardBg,
-              borderRadius: 3,
-              border: `2px dashed #CBD5E1`,
-            }}
-          >
+          <Paper elevation={0} sx={{ p: 8, textAlign: "center", borderRadius: 3, border: "2px dashed #CBD5E1" }}>
             <Typography variant="h5" sx={{ color: "#64748B", fontWeight: 600, mb: 1 }}>
               📚 No Plan Generated Yet
             </Typography>
             <Typography variant="body2" color="textSecondary">
-              Fill in your details above and click "Generate Plan" to get started!
+              Fill in your details and click "Generate Plan" to get started!
             </Typography>
           </Paper>
         )}
       </Container>
+
+      {/* SNACKBAR */}
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={3000}
+        onClose={() => setSnackbar({ ...snackbar, open: false })}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+      >
+        <Alert severity={snackbar.type} sx={{ borderRadius: 2 }}>
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 }
