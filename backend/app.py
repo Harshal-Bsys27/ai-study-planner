@@ -331,8 +331,10 @@ if __name__ == '__main__':
     env = os.getenv('FLASK_ENV', 'development')
     app = create_app(env)
     
-    with app.app_context():
+    if env == "development":
+     with app.app_context():
         db.create_all()
+
         print("\n" + "="*60)
         print("✅ AI Study Planner Backend Started")
         print("="*60)
@@ -347,3 +349,5 @@ if __name__ == '__main__':
         pass
     else:
         app.run(debug=True, port=5000)
+# Expose app for Gunicorn
+app = create_app(os.getenv("FLASK_ENV", "production"))
