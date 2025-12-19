@@ -175,13 +175,19 @@ def smart_adjust():
     day_data = request.json
 
     updated_subtopics = smart_adjust_logic(day_data)
+
+    total_hours = round(
+        sum(s["hours"] for s in updated_subtopics), 1
+    )
+
     progress = calculate_progress(updated_subtopics)
     status = calculate_day_status(progress)
 
     return jsonify({
         "subtopics": updated_subtopics,
         "progress": progress,
-        "status": status
+        "status": status,
+        "total_hours": total_hours   # 👈 IMPORTANT
     })
 
 
