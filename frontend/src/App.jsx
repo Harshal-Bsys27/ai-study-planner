@@ -19,6 +19,19 @@ import {
 } from "@mui/material";
 import { green, orange, red } from "@mui/material/colors";
 
+// 🔥 RECHARTS
+import {
+  PieChart,
+  Pie,
+  Cell,
+  Tooltip,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  ResponsiveContainer,
+} from "recharts";
+
 function App() {
   const [subject, setSubject] = useState("DSA");
   const [days, setDays] = useState(3);
@@ -28,7 +41,7 @@ function App() {
   const [loading, setLoading] = useState(false);
 
   // ===============================
-  // GENERATE PLAN (BACKEND)
+  // GENERATE PLAN
   // ===============================
   const generatePlan = async () => {
     setLoading(true);
@@ -38,10 +51,9 @@ function App() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ subject, days, hours, level }),
       });
-
       const data = await res.json();
       setPlan(data.plan);
-    } catch (err) {
+    } catch {
       alert("Backend not reachable");
     }
     setLoading(false);
@@ -58,7 +70,7 @@ function App() {
   };
 
   // ===============================
-  // PROGRESS CALCULATIONS
+  // PROGRESS CALC
   // ===============================
   const dayProgress = (day) => {
     const total = day.subtopics.length;
@@ -67,7 +79,7 @@ function App() {
   };
 
   const overallProgress = () => {
-    if (plan.length === 0) return 0;
+    if (!plan.length) return 0;
     const total = plan.reduce((s, d) => s + d.subtopics.length, 0);
     const done = plan.reduce(
       (s, d) => s + d.subtopics.filter((x) => x.completed).length,
@@ -77,21 +89,19 @@ function App() {
   };
 
   // ===============================
-  // SMART ADJUST (FIXED)
+  // SMART ADJUST (BACKEND AI)
   // ===============================
   const smartAdjust = async (dayIndex) => {
     try {
       const res = await fetch("http://localhost:5000/api/smart-adjust", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(plan[dayIndex]), // 👈 FULL DAY OBJECT
+        body: JSON.stringify(plan[dayIndex]),
       });
-
       const data = await res.json();
 
       const updated = [...plan];
       updated[dayIndex].subtopics = data.subtopics;
-      updated[dayIndex].progress = data.progress;
       updated[dayIndex].status = data.status;
 
       setPlan(updated);
@@ -111,6 +121,21 @@ function App() {
   };
 
   // ===============================
+  // 📊 CHART DATA
+  // ===============================
+  const pieData = [
+    { name: "Completed", value: overallProgress() },
+    { name: "Remaining", value: 100 - overallProgress() },
+  ];
+
+  const barData = plan.map((day) => ({
+    name: `Day ${day.day}`,
+    progress: dayProgress(day),
+  }));
+
+  const COLORS = ["#4caf50", "#e0e0e0"];
+
+  // ===============================
   // UI
   // ===============================
   return (
@@ -127,11 +152,7 @@ function App() {
           <Grid item xs={12} md={3}>
             <FormControl fullWidth>
               <InputLabel>Subject</InputLabel>
-              <Select
-                value={subject}
-                label="Subject"
-                onChange={(e) => setSubject(e.target.value)}
-              >
+              <Select value={subject} onChange={(e) => setSubject(e.target.value)}>
                 <MenuItem value="DSA">DSA</MenuItem>
                 <MenuItem value="ML">ML</MenuItem>
                 <MenuItem value="Python">Python</MenuItem>
@@ -163,11 +184,7 @@ function App() {
           <Grid item xs={12} md={3}>
             <FormControl fullWidth>
               <InputLabel>Level</InputLabel>
-              <Select
-                value={level}
-                label="Level"
-                onChange={(e) => setLevel(e.target.value)}
-              >
+              <Select value={level} onChange={(e) => setLevel(e.target.value)}>
                 <MenuItem value="Beginner">Beginner</MenuItem>
                 <MenuItem value="Intermediate">Intermediate</MenuItem>
                 <MenuItem value="Advanced">Advanced</MenuItem>
@@ -182,20 +199,45 @@ function App() {
           </Grid>
         </Grid>
 
-        {/* OVERALL PROGRESS */}
+        {/* 📊 ANALYTICS */}
         {plan.length > 0 && (
-          <Card sx={{ mt: 4 }}>
-            <CardContent>
-              <Typography>
-                Overall Progress: {overallProgress()}%
-              </Typography>
-              <LinearProgress
-                variant="determinate"
-                value={overallProgress()}
-                sx={{ height: 10, borderRadius: 5 }}
-              />
-            </CardContent>
-          </Card>
+          <Grid container spacing={3} sx={{ mt: 4 }}>
+            {/* PIE */}
+            <Grid item xs={12} md={4}>
+              <Card>
+                <CardContent>
+                  <Typography variant="h6">Overall Completion</Typography>
+                  <ResponsiveContainer width="100%" height={200}>
+                    <PieChart>
+                      <Pie data={pieData} dataKey="value" innerRadius={50}>
+                        {pieData.map((_, i) => (
+                          <Cell key={i} fill={COLORS[i]} />
+                        ))}
+                      </Pie>
+                      <Tooltip />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </CardContent>
+              </Card>
+            </Grid>
+
+            {/* BAR */}
+            <Grid item xs={12} md={8}>
+              <Card>
+                <CardContent>
+                  <Typography variant="h6">Day-wise Progress</Typography>
+                  <ResponsiveContainer width="100%" height={200}>
+                    <BarChart data={barData}>
+                      <XAxis dataKey="name" />
+                      <YAxis />
+                      <Tooltip />
+                      <Bar dataKey="progress" fill="#1976d2" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </CardContent>
+              </Card>
+            </Grid>
+          </Grid>
         )}
 
         {/* DAY CARDS */}

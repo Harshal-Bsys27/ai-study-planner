@@ -99,13 +99,12 @@ def calculate_day_status(progress):
 
 def smart_adjust_logic(day_data):
     """
-    Core intelligence: adjusts hours based on
-    progress + difficulty level
+    Adjusts study hours intelligently
+    based on progress + difficulty level
     """
 
     level = day_data["level"]
     subtopics = day_data["subtopics"]
-
     progress = calculate_progress(subtopics)
 
     for sub in subtopics:
@@ -169,7 +168,7 @@ def generate_plan():
 
 
 # ==================================================
-# API: SMART ADJUST (IMPORTANT)
+# API: SMART ADJUST
 # ==================================================
 @app.route("/api/smart-adjust", methods=["POST"])
 def smart_adjust():
