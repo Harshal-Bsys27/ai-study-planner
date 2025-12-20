@@ -12,6 +12,8 @@ A full-stack web application for creating personalized study plans and tracking 
 ## 📌 Overview
 
 AI Study Planner is a complete full-stack application that helps students create customized study schedules, track their progress, and achieve their learning goals. With support for multiple subjects and difficulty levels, users can generate personalized study plans in seconds.
+The application is named AI Study Planner because it uses intelligent decision-making logic to automatically generate personalized study schedules.
+Instead of static or pre-defined plans, the system dynamically adapts learning paths based on user inputs, progress, and time availability — simulating human-like planning behavior.
 
 ---
 ## ✨ Key Features
@@ -23,7 +25,6 @@ AI Study Planner is a complete full-stack application that helps students create
 - **Study Timer** - Built-in timer to track and monitor study sessions
 - **User Authentication** - Secure JWT-based authentication system
 - **Responsive Design** - Fully responsive on desktop, tablet, and mobile devices
-- **User-Specific Data** - Each user has isolated, persistent data storage
 - **Progress Tracking** - Real-time progress updates and completion tracking
 
   ---
@@ -56,7 +57,7 @@ AI Study Planner is a complete full-stack application that helps students create
 |--------------|--------------|
 | ![](screenshots/studyplan_chart.png) | ![](screenshots/cutomized_plan.png) |
 
-| History | 
+| ⏱️ Study History | 
 |------------|
 | ![](screenshots/studyhistory.png) | 
 
