@@ -53,7 +53,7 @@ AI Study Planner is a complete full-stack application that helps students create
 | ![](screenshots/loginpage.png) | ![](screenshots/subjectdashboard_gen.png) |
 
 | 📊 Dashboard & Study Plans |📊 Custom Study Plans|
-|--------------|
+|--------------|--------------|
 | ![](screenshots/studyplan_chart.png) | ![](screenshots/cutomized_plan.png) |
 
 | History | 
