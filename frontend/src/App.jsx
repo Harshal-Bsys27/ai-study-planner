@@ -55,7 +55,7 @@ import PauseIcon from "@mui/icons-material/Pause";
 import StopIcon from "@mui/icons-material/Stop";
 
 import Auth from "./pages/Auth";
-const API_URL = import.meta.env.VITE_API_URL;
+
 
 
 const COLORS = {

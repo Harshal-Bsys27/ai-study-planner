@@ -20,7 +20,6 @@ const COLORS = {
   secondary: '#06B6D4',
   bg: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
 };
-const API_URL = import.meta.env.VITE_API_URL;
 
 
 function Auth({ onLoginSuccess }) {
