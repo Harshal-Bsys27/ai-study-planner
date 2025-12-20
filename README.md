@@ -2,13 +2,16 @@
 
 A full-stack web application for creating personalized study plans and tracking learning progress.
 
-**[Live Demo](https://ai-study-planner.onrender.com)** | **[GitHub](https://github.com/Harshal-Bsys27/ai-study-planner)**
+**🔗[Live Demo](https://ai-study-planner-frontend.onrender.com)** 
+**📂[GitHub](https://github.com/Harshal-Bsys27/ai-study-planner)**
+> ⚠️ Note: The application may take up to **30–60 seconds** to load on first visit due to free hosting (cold start on Render).
+
 
 ## Overview
 
 AI Study Planner is a complete full-stack application that helps students create customized study schedules, track their progress, and achieve their learning goals. With support for multiple subjects and difficulty levels, users can generate personalized study plans in seconds.
 
-## Key Features
+## ✨ Key Features
 
 - **Smart Plan Generation** - Create personalized study plans with 6+ built-in subjects
 - **6+ Built-in Subjects** - DSA, Python, Web Dev, Machine Learning, JavaScript, React
@@ -20,7 +23,7 @@ AI Study Planner is a complete full-stack application that helps students create
 - **User-Specific Data** - Each user has isolated, persistent data storage
 - **Progress Tracking** - Real-time progress updates and completion tracking
 
-## Tech Stack
+## 🛠️ Tech Stack
 
 ### Frontend
 - React 19
@@ -206,7 +209,7 @@ StudySession
 - Session tracking
 - Note-taking capability
 
-## Project Structure
+## 📁  Project Structure
 
 ```
 ai-study-planner/
@@ -231,7 +234,7 @@ ai-study-planner/
 └── README.md
 ```
 
-## Deployment
+## 🚀Deployment
 
 ### Deploy to Render
 
