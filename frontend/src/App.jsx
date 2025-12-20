@@ -55,6 +55,8 @@ import PauseIcon from "@mui/icons-material/Pause";
 import StopIcon from "@mui/icons-material/Stop";
 
 import Auth from "./pages/Auth";
+const API_URL = import.meta.env.VITE_API_URL;
+
 
 const COLORS = {
   ahead: "#10B981",
@@ -65,6 +67,7 @@ const COLORS = {
   bg: "#F8FAFC",
   cardBg: "#FFFFFF",
 };
+
 
 const SUBJECTS_DB = {
   "DSA": {
@@ -463,7 +466,7 @@ function App() {
       !updated[dayIndex].topics[subIndex].completed;
 
     try {
-      await fetch(`http://localhost:5000/api/plans/1/progress`, {
+     await fetch(`${API_URL}/api/plans/1/progress`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
