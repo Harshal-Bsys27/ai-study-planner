@@ -37,6 +37,23 @@ AI Study Planner is a complete full-stack application that helps students create
 
 ### Deployment
 - Render (Cloud hosting)
+ ---
+ ## 📸 Screenshots
+
+| Login Page | Planner Dashboard |
+|------------|-----------|
+| ![](screenshots/loginpage.png) | ![](screenshots/subjectdashboard_gen.png) |
+
+| Planner Generation and analytics |
+|--------------|
+| ![](screenshots/studyplan_chart.png) | ![](screenshots/customized_plan.png) |
+
+| History | 
+|------------|
+| ![](screenshots/studyhistory.png) | 
+
+
+---
 
 ## Getting Started
 
