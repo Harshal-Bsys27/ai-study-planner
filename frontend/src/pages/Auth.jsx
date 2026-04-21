@@ -15,11 +15,14 @@ import {
 } from '@mui/material';
 import { Visibility, VisibilityOff } from '@mui/icons-material';
 
+const API_URL = import.meta.env.VITE_API_URL;
 const COLORS = {
   primary: '#0F766E',
   secondary: '#06B6D4',
   bg: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
 };
+
+
 
 function Auth({ onLoginSuccess }) {
   const [tab, setTab] = useState(0);
@@ -104,7 +107,7 @@ function Auth({ onLoginSuccess }) {
     setSuccess('');
 
     try {
-      const res = await fetch('http://localhost:5000/api/register', {
+const res = await fetch(`${API_URL}/api/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username, email, password }),
@@ -150,7 +153,7 @@ function Auth({ onLoginSuccess }) {
     setError('');
 
     try {
-      const res = await fetch('http://localhost:5000/api/login', {
+      const res = await fetch(`${API_URL}/api/login`,{
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username, password }),

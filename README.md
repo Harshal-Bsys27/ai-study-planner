@@ -2,13 +2,21 @@
 
 A full-stack web application for creating personalized study plans and tracking learning progress.
 
-**[Live Demo](https://ai-study-planner.onrender.com)** | **[GitHub](https://github.com/Harshal-Bsys27/ai-study-planner)**
+**🔗[Live Demo](https://ai-study-planner-frontend.onrender.com)** 
 
-## Overview
+📦 GitHub Repository: https://github.com/Harshal-Bsys27/ai-study-planner
+> ⚠️ Note: The application may take up to **30–60 seconds** to load on first visit due to free hosting (cold start on Render).
+
+---
+
+## 📌 Overview
 
 AI Study Planner is a complete full-stack application that helps students create customized study schedules, track their progress, and achieve their learning goals. With support for multiple subjects and difficulty levels, users can generate personalized study plans in seconds.
+The application is named AI Study Planner because it uses intelligent decision-making logic to automatically generate personalized study schedules.
+Instead of static or pre-defined plans, the system dynamically adapts learning paths based on user inputs, progress, and time availability — simulating human-like planning behavior.
 
-## Key Features
+---
+## ✨ Key Features
 
 - **Smart Plan Generation** - Create personalized study plans with 6+ built-in subjects
 - **6+ Built-in Subjects** - DSA, Python, Web Dev, Machine Learning, JavaScript, React
@@ -17,10 +25,11 @@ AI Study Planner is a complete full-stack application that helps students create
 - **Study Timer** - Built-in timer to track and monitor study sessions
 - **User Authentication** - Secure JWT-based authentication system
 - **Responsive Design** - Fully responsive on desktop, tablet, and mobile devices
-- **User-Specific Data** - Each user has isolated, persistent data storage
 - **Progress Tracking** - Real-time progress updates and completion tracking
 
-## Tech Stack
+  ---
+
+## 🛠️ Tech Stack
 
 ### Frontend
 - React 19
@@ -37,6 +46,23 @@ AI Study Planner is a complete full-stack application that helps students create
 
 ### Deployment
 - Render (Cloud hosting)
+ ---
+ ## 📸 Screenshots
+
+| 🔐 Authentication |📊 Dashboard & Study Plans|
+|------------|-----------|
+| ![](screenshots/loginpage.png) | ![](screenshots/subjectdashboard_gen.png) |
+
+| 📊 Dashboard & Study Plans |📊 Custom Study Plans|
+|--------------|--------------|
+| ![](screenshots/studyplan_chart.png) | ![](screenshots/cutomized_plan.png) |
+
+| ⏱️ Study History | 
+|------------|
+| ![](screenshots/studyhistory.png) | 
+
+
+---
 
 ## Getting Started
 
@@ -189,7 +215,7 @@ StudySession
 - Session tracking
 - Note-taking capability
 
-## Project Structure
+## 📁  Project Structure
 
 ```
 ai-study-planner/
@@ -214,7 +240,7 @@ ai-study-planner/
 └── README.md
 ```
 
-## Deployment
+## 🚀Deployment
 
 ### Deploy to Render
 
@@ -299,3 +325,5 @@ For issues and questions:
 ---
 
 Made with dedication by Harshal Bsys27
+<!-- Pair programming commit -->
+
