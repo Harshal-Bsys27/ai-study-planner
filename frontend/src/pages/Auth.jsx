@@ -163,12 +163,19 @@ function Auth({ onLoginSuccess }) {
         return;
       }
 
+      console.log('🔑 API Response:', data);
+
       // Save token and user info
       localStorage.setItem('token', data.token);
       localStorage.setItem('user', JSON.stringify(data.user));
       
-      // Call success callback
-      onLoginSuccess();
+      console.log('💾 Saved to localStorage:', {
+        token: data.token,
+        user: data.user
+      });
+      
+      // Call success callback with user data
+      onLoginSuccess(data.user);
     } catch (err) {
       setError('Network error. Make sure backend is running.');
     } finally {

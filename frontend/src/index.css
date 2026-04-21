@@ -1,22 +1,136 @@
+@import url("https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;600&display=swap");
+
+:root {
+  --admin-ink: #0b1f24;
+  --admin-muted: #4b5a5f;
+  --admin-sand: #f6f3ee;
+  --admin-card: #ffffff;
+  --admin-accent: #0f766e;
+  --admin-accent-2: #f59e0b;
+  --admin-accent-3: #0ea5e9;
+  --admin-shadow: 0 18px 40px rgba(10, 24, 29, 0.12);
+  --admin-font-sans: "Space Grotesk", sans-serif;
+  --admin-font-mono: "IBM Plex Mono", monospace;
+}
+
+* {
+  box-sizing: border-box;
+}
+
 body {
   margin: 0;
-  font-family: "Roboto", sans-serif;
-  background-color: #f5f5f5;
+  font-family: var(--admin-font-sans);
+  background-color: var(--admin-sand);
+  color: var(--admin-ink);
 }
 
-.MuiCard-root {
-  background-color: #ffffff;
-  box-shadow: 0px 3px 10px rgba(0, 0, 0, 0.1);
+.admin-shell {
+  position: relative;
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at 20% 10%, rgba(14, 165, 233, 0.18), transparent 55%),
+    radial-gradient(circle at 90% 0%, rgba(245, 158, 11, 0.16), transparent 45%),
+    linear-gradient(120deg, #f6f3ee 0%, #f8faf8 60%, #f1f5f4 100%);
+  overflow: hidden;
 }
 
-.MuiAppBar-root {
-  background-color: #1976d2; /* MUI primary blue */
+.admin-content {
+  position: relative;
+  z-index: 1;
+  animation: adminFade 0.6s ease-out;
 }
 
-.MuiButton-contained {
-  background-color: #1976d2;
+.admin-ambient {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+  z-index: 0;
 }
 
-.MuiButton-contained:hover {
-  background-color: #115293;
+.admin-orb {
+  position: absolute;
+  border-radius: 999px;
+  opacity: 0.6;
+  filter: blur(0px);
+  animation: adminFloat 12s ease-in-out infinite;
+}
+
+.admin-orb-1 {
+  width: 280px;
+  height: 280px;
+  background: radial-gradient(circle, rgba(15, 118, 110, 0.35), rgba(15, 118, 110, 0));
+  top: -80px;
+  left: -60px;
+}
+
+.admin-orb-2 {
+  width: 360px;
+  height: 360px;
+  background: radial-gradient(circle, rgba(245, 158, 11, 0.35), rgba(245, 158, 11, 0));
+  top: 120px;
+  right: -120px;
+  animation-delay: 1.5s;
+}
+
+.admin-orb-3 {
+  width: 220px;
+  height: 220px;
+  background: radial-gradient(circle, rgba(14, 165, 233, 0.35), rgba(14, 165, 233, 0));
+  bottom: -40px;
+  left: 18%;
+  animation-delay: 3s;
+}
+
+.admin-grid {
+  position: absolute;
+  inset: -20%;
+  background-image:
+    linear-gradient(rgba(11, 31, 36, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(11, 31, 36, 0.05) 1px, transparent 1px);
+  background-size: 80px 80px;
+  transform: rotate(2deg);
+  opacity: 0.35;
+}
+
+@keyframes adminFloat {
+  0%,
+  100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-18px);
+  }
+}
+
+@keyframes adminFade {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0px);
+  }
+}
+
+.admin-live-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  background: #10b981;
+  box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.6);
+  animation: adminPulse 1.6s infinite;
+}
+
+@keyframes adminPulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.6);
+  }
+  70% {
+    box-shadow: 0 0 0 10px rgba(16, 185, 129, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
+  }
 }
