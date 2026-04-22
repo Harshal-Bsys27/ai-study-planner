@@ -57,7 +57,6 @@ import PauseIcon from "@mui/icons-material/Pause";
 import StopIcon from "@mui/icons-material/Stop";
 
 import Auth from "./pages/Auth";
-<<<<<<< HEAD
 import AdminDashboard from "./pages/AdminDashboard";
 import PomodoroTimer from "./components/PomodoroTimer";
 import SearchFilter from "./components/SearchFilter";
@@ -65,10 +64,8 @@ import ProgressChart from "./components/ProgressChart";
 import StreakTracker from "./components/StreakTracker";
 import FlashcardWidget from "./components/FlashcardWidget";
 import ExportPlan from "./components/ExportPlan";
-=======
-const API_URL = import.meta.env.VITE_API_URL;
 
->>>>>>> 4082d823dd980082084f9ddf853648977e48ad55
+const API_URL = import.meta.env.VITE_API_URL;
 
 const COLORS = {
   ahead: "#10B981",
@@ -816,11 +813,7 @@ function App() {
       !updated[dayIndex].topics[subIndex].completed;
 
     try {
-<<<<<<< HEAD
-      const res = await fetch(`http://localhost:5000/api/plans/${currentPlanId}/progress`, {
-=======
-     await fetch(`${API_URL}/api/plans/1/progress`, {
->>>>>>> 4082d823dd980082084f9ddf853648977e48ad55
+      const res = await fetch(`${API_URL}/api/plans/${currentPlanId}/progress`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
