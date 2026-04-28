@@ -20,7 +20,14 @@ import {
   Paper,
   Stack,
   Divider,
+  Avatar,
+  IconButton,
 } from "@mui/material";
+import ArrowBackIcon from "@mui/icons-material/ArrowBack";
+import LogoutIcon from "@mui/icons-material/Logout";
+import DashboardIcon from "@mui/icons-material/Dashboard";
+import RefreshIcon from "@mui/icons-material/Refresh";
+import FileDownloadIcon from "@mui/icons-material/FileDownload";
 import {
   BarChart,
   Bar,
@@ -326,34 +333,59 @@ const AdminDashboard = ({ token, onLogout, onBack }) => {
       <AppBar
         position="sticky"
         elevation={0}
+        className="navbar-glow"
         sx={{
-          background: "rgba(11, 31, 36, 0.92)",
-          backdropFilter: "blur(14px)",
-          borderBottom: "1px solid rgba(255,255,255,0.08)",
+          background: "linear-gradient(135deg, #011a11 0%, #052e1c 50%, #053a23 100%)",
+          backdropFilter: "blur(28px)",
+          borderBottom: "1px solid rgba(52, 211, 153, 0.12)",
+          height: 64,
         }}
       >
-        <Toolbar>
-          <Typography
-            variant="h6"
-            sx={{ flexGrow: 1, fontWeight: 600, letterSpacing: 0.4 }}
-          >
-            Admin Dashboard
-          </Typography>
+        <Toolbar sx={{ minHeight: 64, gap: 2 }}>
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, flexGrow: 1 }}>
+            <Box sx={{
+              width: 36, height: 36, borderRadius: "10px",
+              background: "linear-gradient(145deg, #f59e0b 0%, #d97706 100%)",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              boxShadow: "0 0 16px rgba(245, 158, 11, 0.35)",
+            }}>
+              <DashboardIcon sx={{ color: "#fff", fontSize: 20 }} />
+            </Box>
+            <Box>
+              <Typography
+                variant="subtitle1"
+                className="shimmer-text"
+                sx={{ fontWeight: 800, fontSize: "1rem", lineHeight: 1.2, fontFamily: '"Outfit", sans-serif' }}
+              >
+                Admin Panel
+              </Typography>
+              <Typography sx={{ color: "rgba(251, 191, 36, 0.7)", fontSize: "0.6rem", fontWeight: 600, letterSpacing: "0.18em", textTransform: "uppercase" }}>
+                Command Center
+              </Typography>
+            </Box>
+          </Box>
+
           <Button
-            color="inherit"
             onClick={onBack}
-            sx={{ textTransform: "none", borderRadius: 99, px: 2.5, mr: 1 }}
+            startIcon={<ArrowBackIcon sx={{ fontSize: 16 }} />}
+            sx={{
+              color: "rgba(255,255,255,0.8)", borderRadius: "10px", px: 2,
+              fontWeight: 600, fontSize: "0.82rem",
+              border: "1px solid rgba(255,255,255,0.1)",
+              transition: "all 0.2s ease",
+              "&:hover": { background: "rgba(52, 211, 153, 0.12)", borderColor: "rgba(52, 211, 153, 0.3)", color: "#34d399" }
+            }}
           >
-            Back to App
+            Back
           </Button>
           <Button
-            color="inherit"
             onClick={onLogout}
+            startIcon={<LogoutIcon sx={{ fontSize: 16 }} />}
             sx={{
-              textTransform: "none",
-              borderRadius: 99,
-              px: 2.5,
-              border: "1px solid rgba(255,255,255,0.18)",
+              color: "rgba(255,255,255,0.6)", borderRadius: "10px", px: 2,
+              fontWeight: 600, fontSize: "0.82rem",
+              transition: "all 0.2s ease",
+              "&:hover": { background: "rgba(239, 68, 68, 0.1)", color: "#f87171" }
             }}
           >
             Logout
@@ -386,14 +418,18 @@ const AdminDashboard = ({ token, onLogout, onBack }) => {
             <Typography
               variant="h3"
               sx={{
-                fontWeight: 700,
-                letterSpacing: "-0.02em",
+                fontWeight: 800,
+                letterSpacing: "-0.025em",
                 mb: 1,
+                fontSize: { xs: "1.75rem", md: "2.2rem" },
+                background: "linear-gradient(135deg, #0b1f24 0%, #0f766e 100%)",
+                WebkitBackgroundClip: "text",
+                WebkitTextFillColor: "transparent",
               }}
             >
               Admin Command Center
             </Typography>
-            <Typography variant="body1" sx={{ color: "var(--admin-muted)" }}>
+            <Typography variant="body1" sx={{ color: "var(--admin-muted)", fontSize: "0.95rem" }}>
               Track user growth, learning activity, and system health in real time.
             </Typography>
             <Box sx={{ display: "flex", alignItems: "center", gap: 1, mt: 2 }}>
@@ -408,44 +444,46 @@ const AdminDashboard = ({ token, onLogout, onBack }) => {
             <Button
               variant="contained"
               onClick={() => refreshAll(false)}
+              startIcon={<RefreshIcon sx={{ fontSize: 18 }} />}
               sx={{
-                background: "#0f766e",
+                background: "linear-gradient(135deg, #0f766e, #0891b2)",
                 color: "#fff",
-                textTransform: "none",
-                fontWeight: 600,
-                px: 3,
-                boxShadow: "0 12px 24px rgba(15, 118, 110, 0.25)",
+                fontWeight: 700,
+                px: 3, borderRadius: "12px",
+                boxShadow: "0 6px 20px rgba(15, 118, 110, 0.3)",
+                transition: "all 0.25s ease",
+                "&:hover": { transform: "translateY(-1px)", boxShadow: "0 8px 28px rgba(15, 118, 110, 0.4)" }
               }}
             >
-              Refresh Metrics
+              Refresh
             </Button>
             <Button
               variant="outlined"
               onClick={() => handleExport("json")}
               disabled={exporting}
+              startIcon={<FileDownloadIcon sx={{ fontSize: 16 }} />}
               sx={{
-                borderColor: "rgba(15, 118, 110, 0.4)",
-                color: "#0f766e",
-                textTransform: "none",
-                fontWeight: 600,
-                px: 3,
+                borderColor: "rgba(15, 118, 110, 0.3)",
+                color: "#0f766e", fontWeight: 700, px: 2.5, borderRadius: "12px",
+                transition: "all 0.2s ease",
+                "&:hover": { borderColor: "#0f766e", background: "rgba(15, 118, 110, 0.05)", transform: "translateY(-1px)" }
               }}
             >
-              Export JSON
+              JSON
             </Button>
             <Button
               variant="outlined"
               onClick={() => handleExport("csv")}
               disabled={exporting}
+              startIcon={<FileDownloadIcon sx={{ fontSize: 16 }} />}
               sx={{
-                borderColor: "rgba(15, 118, 110, 0.4)",
-                color: "#0f766e",
-                textTransform: "none",
-                fontWeight: 600,
-                px: 3,
+                borderColor: "rgba(15, 118, 110, 0.3)",
+                color: "#0f766e", fontWeight: 700, px: 2.5, borderRadius: "12px",
+                transition: "all 0.2s ease",
+                "&:hover": { borderColor: "#0f766e", background: "rgba(15, 118, 110, 0.05)", transform: "translateY(-1px)" }
               }}
             >
-              Export CSV
+              CSV
             </Button>
           </Stack>
         </Box>
@@ -462,34 +500,36 @@ const AdminDashboard = ({ token, onLogout, onBack }) => {
           {metricCards.map((metric) => (
             <Grid item xs={12} sm={6} md={4} key={metric.label}>
               <Card
+                className="metric-card"
                 sx={{
-                  borderRadius: 3,
-                  background: "rgba(255,255,255,0.92)",
-                  border: "1px solid rgba(15, 23, 42, 0.08)",
-                  boxShadow: "var(--admin-shadow)",
+                  borderRadius: "16px",
+                  background: "rgba(255,255,255,0.96)",
+                  border: "1px solid rgba(15, 23, 42, 0.06)",
+                  boxShadow: "0 4px 20px rgba(15, 23, 42, 0.06)",
                   position: "relative",
                   overflow: "hidden",
                 }}
               >
-                <Box sx={{ position: "absolute", inset: 0, height: 3, background: metric.accent }} />
-                <CardContent>
+                <Box sx={{ position: "absolute", top: 0, left: 0, right: 0, height: 3, background: `linear-gradient(90deg, ${metric.accent}, ${metric.accent}80)` }} />
+                <CardContent sx={{ p: 2.5 }}>
                   <Typography
-                    variant="subtitle2"
-                    sx={{ color: "var(--admin-muted)", fontWeight: 600 }}
+                    sx={{ color: "#64748b", fontWeight: 700, fontSize: "0.72rem", letterSpacing: "0.1em", textTransform: "uppercase" }}
                   >
                     {metric.label}
                   </Typography>
                   <Typography
                     variant="h4"
                     sx={{
-                      fontWeight: 700,
+                      fontWeight: 800,
                       mt: 1,
-                      fontFamily: "var(--admin-font-mono)",
+                      fontSize: "1.8rem",
+                      fontFamily: '"JetBrains Mono", monospace',
+                      color: "#0b1f24",
                     }}
                   >
-                    {loadingStats ? <CircularProgress size={22} /> : metric.value}
+                    {loadingStats ? <CircularProgress size={22} sx={{ color: metric.accent }} /> : metric.value}
                   </Typography>
-                  <Typography variant="body2" sx={{ color: "var(--admin-muted)", mt: 1 }}>
+                  <Typography variant="body2" sx={{ color: "#94a3b8", mt: 1, fontWeight: 500, fontSize: "0.82rem" }}>
                     {metric.caption}
                   </Typography>
                 </CardContent>

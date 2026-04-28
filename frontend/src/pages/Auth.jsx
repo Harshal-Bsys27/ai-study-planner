@@ -44,7 +44,7 @@ function Auth({ onLoginSuccess }) {
   };
 
   const validateUsername = (username) => {
-    return username.length >= 3 && /^[a-zA-Z0-9_]+$/.test(username);
+    return username.length >= 3 && /^[a-zA-Z0-9_\-]+$/.test(username);
   };
 
   const validatePassword = (password) => {
@@ -57,7 +57,7 @@ function Auth({ onLoginSuccess }) {
     if (!username.trim()) {
       newErrors.username = 'Username is required';
     } else if (!validateUsername(username)) {
-      newErrors.username = 'Username must be 3+ chars, alphanumeric only';
+      newErrors.username = 'Username must be 3+ chars, alphanumeric, underscores, or hyphens';
     }
 
     if (!email.trim()) {
@@ -383,7 +383,7 @@ const res = await fetch(`${API_URL}/api/register`, {
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
                   error={!!errors.username}
-                  helperText={errors.username || 'Min 3 chars, alphanumeric only'}
+                  helperText={errors.username || 'Min 3 chars, alphanumeric, underscores, or hyphens'}
                   sx={{ mb: 2 }}
                   InputProps={{
                     startAdornment: (

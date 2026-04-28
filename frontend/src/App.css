@@ -1,65 +1,11 @@
-* {
-  box-sizing: border-box;
-  font-family: Arial, sans-serif;
-}
-
-body {
-  margin: 0;
-  background: #f4f6f8;
-}
-
-.container {
-  max-width: 500px;
-  margin: 60px auto;
-  padding: 20px;
-}
-
-h1 {
-  text-align: center;
-  margin-bottom: 20px;
-}
-
-.card {
-  background: #ffffff;
-  padding: 20px;
-  border-radius: 8px;
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
-  margin-bottom: 20px;
-}
-
-input {
-  width: 100%;
-  padding: 10px;
-  margin-bottom: 12px;
-  border-radius: 5px;
-  border: 1px solid #ccc;
-}
-
-button {
-  width: 100%;
-  padding: 10px;
-  background: #2563eb;
-  color: white;
-  border: none;
-  border-radius: 5px;
-  cursor: pointer;
-  font-size: 16px;
-}
-
-button:disabled {
-  background: #9ca3af;
-}
-
-button:hover:not(:disabled) {
-  background: #1d4ed8;
-}
-
-.error {
-  color: red;
-  margin-top: 10px;
-  text-align: center;
-}
+/* App.css - Minimal overrides only. Main styles are in index.css + MUI theme */
 
 .plan ul {
   padding-left: 20px;
+}
+
+.error {
+  color: #ef4444;
+  margin-top: 10px;
+  text-align: center;
 }

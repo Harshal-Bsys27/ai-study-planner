@@ -35,6 +35,11 @@ import {
   AccordionDetails,
   Divider,
   Stack,
+  IconButton,
+  Avatar,
+  Menu,
+  Badge,
+  InputAdornment,
 } from "@mui/material";
 
 import {
@@ -55,6 +60,14 @@ import RadioButtonUncheckedIcon from "@mui/icons-material/RadioButtonUnchecked";
 import PlayArrowIcon from "@mui/icons-material/PlayArrow";
 import PauseIcon from "@mui/icons-material/Pause";
 import StopIcon from "@mui/icons-material/Stop";
+import SearchIcon from "@mui/icons-material/Search";
+import NotificationsIcon from "@mui/icons-material/Notifications";
+import SettingsIcon from "@mui/icons-material/Settings";
+import PersonIcon from "@mui/icons-material/Person";
+import MenuIcon from "@mui/icons-material/Menu";
+import DashboardIcon from "@mui/icons-material/Dashboard";
+import HistoryIcon from "@mui/icons-material/History";
+import LogoutIcon from "@mui/icons-material/Logout";
 
 import Auth from "./pages/Auth";
 import AdminDashboard from "./pages/AdminDashboard";
@@ -73,7 +86,7 @@ const COLORS = {
   behind: "#EF4444",
   primary: "#0F766E",
   secondary: "#0EA5E9",
-  bg: "linear-gradient(120deg, #f6f3ee 0%, #f8fafc 55%, #edf6f4 100%)",
+  bg: "linear-gradient(135deg, #f0fdfa 0%, #ccfbf1 30%, #99f6e4 70%, #5eead4 100%)",
   cardBg: "#FFFFFF",
 };
 
@@ -287,6 +300,9 @@ function App() {
   const [searchResults, setSearchResults] = useState([]);
   const [searchLoading, setSearchLoading] = useState(false);
   const [searchError, setSearchError] = useState('');
+  const [anchorEl, setAnchorEl] = useState(null);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
 
   const navigate = useNavigate();
 
@@ -832,15 +848,21 @@ function App() {
 
       setPlan(updated);
 
-      const localAnalytics = buildLocalAnalytics(updated);
-      setPlanAnalytics((prev) => ({
-        total_sessions: prev?.total_sessions || 0,
-        total_hours: prev?.total_hours || 0,
-        topic_time_minutes: prev?.topic_time_minutes || {},
-        ...localAnalytics,
-      }));
+      try {
+        const localAnalytics = buildLocalAnalytics(updated);
+        setPlanAnalytics((prev) => ({
+          total_sessions: prev?.total_sessions || 0,
+          total_hours: prev?.total_hours || 0,
+          topic_time_minutes: prev?.topic_time_minutes || {},
+          ...localAnalytics,
+        }));
+      } catch (error) {
+        console.error('Error updating analytics:', error);
+        // Keep previous analytics if update fails
+      }
 
-      fetchAnalytics(currentPlanId);
+      // Don't fetch analytics from server to avoid overwriting local updates
+      // The local analytics are sufficient for real-time updates
 
       const action = updated[dayIndex].topics[subIndex].completed ? 'completed' : 'uncompleted';
       showSnackbar(`✅ Topic ${action}!`);
@@ -940,161 +962,443 @@ function App() {
   // ===============================
   const mainView = (
     <Box sx={{ background: COLORS.bg, minHeight: "100vh" }}>
-      {/* NAVBAR */}
+      {/* MODERN NAVBAR */}
       <AppBar
         position="sticky"
         elevation={0}
+        className="navbar-glow"
         sx={{
-          background: "rgba(11, 31, 36, 0.92)",
-          backdropFilter: "blur(14px)",
-          borderBottom: "1px solid rgba(255,255,255,0.08)",
+          background: "linear-gradient(135deg, #011a11 0%, #052e1c 50%, #053a23 100%)",
+          backdropFilter: "blur(28px)",
+          borderBottom: "1px solid rgba(52, 211, 153, 0.12)",
+          height: 72,
         }}
       >
-        <Toolbar sx={{ minHeight: 72, gap: 2 }}>
-          <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
+        <Toolbar sx={{ minHeight: 72, px: { xs: 2, md: 4 }, gap: 2 }}>
+          {/* Logo Section */}
+          <Box sx={{ display: "flex", alignItems: "center", gap: 2, flexShrink: 0 }}>
             <Box
               sx={{
-                width: 14,
-                height: 14,
-                borderRadius: "50%",
-                background: "linear-gradient(135deg, #0ea5e9, #0f766e)",
-                boxShadow: "0 0 12px rgba(14, 165, 233, 0.6)",
+                width: 44,
+                height: 44,
+                borderRadius: 3,
+                background: "linear-gradient(145deg, #34d399 0%, #10b981 50%, #059669 100%)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                boxShadow: "0 0 20px rgba(52, 211, 153, 0.45), 0 4px 12px rgba(0,0,0,0.3)",
+                flexShrink: 0,
+                transition: "transform 0.3s ease, box-shadow 0.3s ease",
+                "&:hover": {
+                  transform: "scale(1.08) rotate(-3deg)",
+                  boxShadow: "0 0 30px rgba(52, 211, 153, 0.6), 0 6px 20px rgba(0,0,0,0.4)",
+                }
               }}
-            />
-            <Box>
-              <Typography variant="h6" sx={{ fontWeight: 700, letterSpacing: 0.4 }}>
+            >
+              <DashboardIcon sx={{ color: "#fff", fontSize: 24 }} />
+            </Box>
+            <Box sx={{ display: { xs: "none", sm: "block" } }}>
+              <Typography
+                variant="h6"
+                className="shimmer-text"
+                sx={{
+                  fontWeight: 800,
+                  fontSize: "1.25rem",
+                  letterSpacing: 0.5,
+                  lineHeight: 1.2,
+                  fontFamily: '"Outfit", sans-serif',
+                }}
+              >
                 AI Study Planner
               </Typography>
-              <Typography variant="caption" sx={{ color: "rgba(255,255,255,0.6)" }}>
-                Focused learning workspace
+              <Typography
+                sx={{
+                  color: "rgba(52, 211, 153, 0.8)",
+                  fontWeight: 600,
+                  fontSize: "0.65rem",
+                  letterSpacing: "0.2em",
+                  textTransform: "uppercase",
+                  lineHeight: 1,
+                }}
+              >
+                Focused Learning
               </Typography>
             </Box>
           </Box>
 
-          <Box sx={{ flexGrow: 1 }} />
-
-          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-            <Chip
-              label="Live"
+          {/* Search Bar - Desktop */}
+          <Box sx={{
+            flexGrow: 1,
+            mx: { xs: 0, md: 5 },
+            display: { xs: "none", md: "flex" },
+            justifyContent: "center",
+          }}>
+            <TextField
+              placeholder="Search plans, topics..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
               size="small"
+              fullWidth
               sx={{
-                background: "rgba(16, 185, 129, 0.2)",
-                color: "#a7f3d0",
-                fontWeight: 600,
+                maxWidth: 440,
+                "& .MuiOutlinedInput-root": {
+                  borderRadius: "12px",
+                  background: "rgba(255,255,255,0.07)",
+                  color: "#e2e8f0",
+                  fontWeight: 500,
+                  fontSize: "0.9rem",
+                  border: "1px solid rgba(255,255,255,0.1)",
+                  transition: "all 0.25s ease",
+                  "&:hover": {
+                    background: "rgba(255,255,255,0.1)",
+                    border: "1px solid rgba(52, 211, 153, 0.3)",
+                  },
+                  "&.Mui-focused": {
+                    background: "rgba(255,255,255,0.1)",
+                    border: "1px solid rgba(52, 211, 153, 0.6)",
+                    boxShadow: "0 0 0 3px rgba(52, 211, 153, 0.1)",
+                  },
+                  "& .MuiOutlinedInput-notchedOutline": { border: "none" },
+                },
+                "& .MuiInputBase-input::placeholder": {
+                  color: "rgba(255,255,255,0.4)",
+                  fontSize: "0.88rem"
+                }
+              }}
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <SearchIcon sx={{ color: "rgba(52, 211, 153, 0.7)", fontSize: 20 }} />
+                  </InputAdornment>
+                )
               }}
             />
-            <Button
-              color="inherit"
-              onClick={() => setShowHistory(!showHistory)}
-              sx={{ textTransform: "none", borderRadius: 99, px: 2.5 }}
-            >
-              History
-            </Button>
-            {isAdmin && (
-              <Button
-                color="inherit"
-                onClick={() => navigate('/admin')}
+          </Box>
+
+          {/* Right Section */}
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, ml: "auto" }}>
+            {/* Live Status */}
+            <Box sx={{ display: { xs: "none", sm: "flex" }, alignItems: "center", gap: 1,
+              background: "rgba(52, 211, 153, 0.12)", borderRadius: "20px", px: 1.5, py: 0.5,
+              border: "1px solid rgba(52, 211, 153, 0.2)"
+            }}>
+              <Box className="admin-live-dot" />
+              <Typography sx={{ color: "#6ee7b7", fontSize: "0.75rem", fontWeight: 700, letterSpacing: "0.08em" }}>
+                LIVE
+              </Typography>
+            </Box>
+
+            {/* Navigation Icons - Desktop */}
+            <Box sx={{ display: { xs: "none", md: "flex" }, gap: 0.5 }}>
+              <IconButton
+                onClick={() => setShowHistory(!showHistory)}
+                title="Study History"
                 sx={{
-                  textTransform: "none",
-                  borderRadius: 99,
-                  px: 2.5,
-                  background: "rgba(14, 165, 233, 0.16)",
+                  color: showHistory ? "#34d399" : "rgba(255,255,255,0.65)",
+                  background: showHistory ? "rgba(52, 211, 153, 0.15)" : "transparent",
+                  borderRadius: "10px", width: 40, height: 40,
+                  transition: "all 0.2s ease",
+                  "&:hover": { color: "#34d399", background: "rgba(52, 211, 153, 0.15)" }
                 }}
               >
-                Admin
-              </Button>
-            )}
-            <Button
-              color="inherit"
-              onClick={handleLogout}
+                <HistoryIcon sx={{ fontSize: 20 }} />
+              </IconButton>
+
+              <IconButton
+                title="Notifications"
+                sx={{
+                  color: "rgba(255,255,255,0.65)", borderRadius: "10px", width: 40, height: 40,
+                  transition: "all 0.2s ease",
+                  "&:hover": { color: "#fbbf24", background: "rgba(251, 191, 36, 0.1)" }
+                }}
+              >
+                <Badge badgeContent={3} color="error"
+                  sx={{ "& .MuiBadge-badge": { fontSize: 9, height: 16, minWidth: 16, top: 2, right: 2 } }}
+                >
+                  <NotificationsIcon sx={{ fontSize: 20 }} />
+                </Badge>
+              </IconButton>
+
+              {isAdmin && (
+                <IconButton
+                  onClick={() => navigate('/admin')}
+                  title="Admin Panel"
+                  sx={{
+                    color: "rgba(255,255,255,0.65)", borderRadius: "10px", width: 40, height: 40,
+                    transition: "all 0.2s ease",
+                    "&:hover": { color: "#34d399", background: "rgba(52, 211, 153, 0.15)" }
+                  }}
+                >
+                  <SettingsIcon sx={{ fontSize: 20 }} />
+                </IconButton>
+              )}
+            </Box>
+
+            {/* Divider */}
+            <Box sx={{ display: { xs: "none", md: "block" }, width: 1, height: 24, background: "rgba(255,255,255,0.12)" }} />
+
+            {/* User Profile */}
+            <IconButton
+              onClick={(e) => setAnchorEl(e.currentTarget)}
+              sx={{ p: 0.5, transition: "all 0.25s ease", "&:hover": { transform: "scale(1.05)" } }}
+            >
+              <Avatar
+                sx={{
+                  width: 38, height: 38,
+                  background: "linear-gradient(135deg, #34d399 0%, #0f766e 100%)",
+                  border: "2px solid rgba(52, 211, 153, 0.4)",
+                  boxShadow: "0 4px 16px rgba(52, 211, 153, 0.3)",
+                  fontSize: "0.85rem", fontWeight: 800, fontFamily: '"Outfit", sans-serif'
+                }}
+              >
+                <PersonIcon sx={{ fontSize: 20 }} />
+              </Avatar>
+            </IconButton>
+
+            {/* Mobile Menu Button */}
+            <IconButton
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
               sx={{
-                textTransform: "none",
-                borderRadius: 99,
-                px: 2.5,
-                border: "1px solid rgba(255,255,255,0.18)",
+                display: { xs: "flex", md: "none" },
+                color: "rgba(255,255,255,0.8)", borderRadius: "10px",
+                transition: "all 0.2s ease",
+                "&:hover": { color: "#fff", background: "rgba(255,255,255,0.1)" }
               }}
             >
-              Logout
-            </Button>
+              <MenuIcon sx={{ fontSize: 22 }} />
+            </IconButton>
           </Box>
         </Toolbar>
+
+        {/* Mobile Menu */}
+        <Box
+          sx={{
+            display: { xs: mobileMenuOpen ? "flex" : "none", md: "none" },
+            flexDirection: "column",
+            background: "rgba(1, 26, 17, 0.98)",
+            backdropFilter: "blur(24px)",
+            borderBottom: "1px solid rgba(52, 211, 153, 0.15)",
+            px: 2, py: 2, gap: 0.5
+          }}
+        >
+          <TextField
+            placeholder="Search plans, topics..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            size="small"
+            fullWidth
+            sx={{
+              mb: 1.5,
+              "& .MuiOutlinedInput-root": {
+                borderRadius: "12px",
+                background: "rgba(255,255,255,0.07)",
+                color: "#e2e8f0", fontWeight: 500,
+                "& .MuiOutlinedInput-notchedOutline": { border: "none" },
+                border: "1px solid rgba(255,255,255,0.1)",
+              },
+              "& .MuiInputBase-input::placeholder": { color: "rgba(255,255,255,0.4)" }
+            }}
+            InputProps={{
+              startAdornment: (
+                <InputAdornment position="start">
+                  <SearchIcon sx={{ color: "rgba(52, 211, 153, 0.7)", fontSize: 18 }} />
+                </InputAdornment>
+              )
+            }}
+          />
+          {[{
+            label: "Study History", icon: <HistoryIcon />, action: () => { setShowHistory(!showHistory); setMobileMenuOpen(false); },
+            color: "#34d399"
+          }, ...(isAdmin ? [{ label: "Admin Panel", icon: <SettingsIcon />, action: () => { navigate('/admin'); setMobileMenuOpen(false); }, color: "#fbbf24" }] : []),
+          { label: "Logout", icon: <LogoutIcon />, action: () => { handleLogout(); setMobileMenuOpen(false); }, color: "#f87171" }
+          ].map((item) => (
+            <Button
+              key={item.label}
+              onClick={item.action}
+              startIcon={React.cloneElement(item.icon, { sx: { fontSize: 18, color: item.color } })}
+              sx={{
+                justifyContent: "flex-start", color: "rgba(255,255,255,0.85)",
+                borderRadius: "10px", py: 1.4, px: 2, fontWeight: 600, fontSize: "0.9rem",
+                transition: "all 0.2s ease",
+                "&:hover": { background: `${item.color}18`, color: item.color, pl: 2.5 }
+              }}
+            >
+              {item.label}
+            </Button>
+          ))}
+        </Box>
       </AppBar>
+
+      {/* User Menu */}
+      <Menu
+        anchorEl={anchorEl}
+        open={Boolean(anchorEl)}
+        onClose={() => setAnchorEl(null)}
+        PaperProps={{
+          sx: {
+            mt: 1.5,
+            minWidth: 240,
+            borderRadius: "16px",
+            background: "rgba(255, 255, 255, 0.98)",
+            backdropFilter: "blur(24px)",
+            boxShadow: "0 20px 60px rgba(0,0,0,0.18), 0 4px 16px rgba(15,118,110,0.1)",
+            border: "1px solid rgba(15, 118, 110, 0.1)",
+            overflow: "hidden",
+          }
+        }}
+        transformOrigin={{ horizontal: "right", vertical: "top" }}
+        anchorOrigin={{ horizontal: "right", vertical: "bottom" }}
+      >
+        {/* User Info Header */}
+        <Box sx={{ px: 2.5, py: 2, background: "linear-gradient(135deg, #022c22 0%, #064e3b 100%)", mb: 1 }}>
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
+            <Avatar sx={{ width: 38, height: 38, background: "linear-gradient(135deg, #34d399, #059669)", fontSize: "0.9rem", fontWeight: 800 }}>
+              <PersonIcon sx={{ fontSize: 20 }} />
+            </Avatar>
+            <Box>
+              <Typography variant="body2" sx={{ fontWeight: 700, color: "#fff", lineHeight: 1.2 }}>
+                {(() => { try { return JSON.parse(localStorage.getItem('user'))?.username || "User"; } catch { return "User"; } })()}
+              </Typography>
+              <Typography variant="caption" sx={{ color: "rgba(52, 211, 153, 0.8)", fontWeight: 500 }}>
+                {isAdmin ? "✦ Administrator" : "Student"}
+              </Typography>
+            </Box>
+          </Box>
+        </Box>
+
+        {[
+          { icon: <PersonIcon />, label: "View Profile", sub: "Account settings", color: "#0f766e", action: () => setAnchorEl(null) },
+          { icon: <HistoryIcon />, label: "Study History", sub: "Past sessions", color: "#0891b2", action: () => { setAnchorEl(null); setShowHistory(!showHistory); } },
+          ...(isAdmin ? [{ icon: <SettingsIcon />, label: "Admin Panel", sub: "Manage platform", color: "#d97706", action: () => { setAnchorEl(null); navigate('/admin'); } }] : []),
+        ].map((item, i) => (
+          <MenuItem
+            key={item.label}
+            onClick={item.action}
+            sx={{ py: 1.3, px: 2.5, gap: 1.8, transition: "all 0.2s ease",
+              "&:hover": { background: `${item.color}10`, pl: 2.8 }
+            }}
+          >
+            {React.cloneElement(item.icon, { sx: { color: item.color, fontSize: 20 } })}
+            <Box>
+              <Typography variant="body2" sx={{ fontWeight: 700, color: "#0f172a", lineHeight: 1.2 }}>{item.label}</Typography>
+              <Typography variant="caption" sx={{ color: "#94a3b8", fontWeight: 500 }}>{item.sub}</Typography>
+            </Box>
+          </MenuItem>
+        ))}
+
+        <Divider sx={{ my: 0.5, borderColor: "rgba(0,0,0,0.06)" }} />
+        <MenuItem
+          onClick={() => { setAnchorEl(null); handleLogout(); }}
+          sx={{ py: 1.3, px: 2.5, gap: 1.8, mb: 0.5, borderRadius: "0 0 16px 16px", transition: "all 0.2s ease",
+            "&:hover": { background: "rgba(239, 68, 68, 0.07)", pl: 2.8 }
+          }}
+        >
+          <LogoutIcon sx={{ color: "#ef4444", fontSize: 20 }} />
+          <Typography variant="body2" sx={{ fontWeight: 700, color: "#ef4444" }}>Sign Out</Typography>
+        </MenuItem>
+      </Menu>
 
       <Container maxWidth="lg" sx={{ py: 3, px: 2 }}>
         <Box sx={{ mb: 3 }}>
           <Card
+            className="fade-in"
             sx={{
-              borderRadius: 4,
+              borderRadius: "22px",
               overflow: "hidden",
-              background: "linear-gradient(120deg, rgba(15, 118, 110, 0.95), rgba(14, 165, 233, 0.92))",
+              background: "linear-gradient(135deg, #022c22 0%, #064e3b 35%, #0d6b57 70%, #0891b2 100%)",
               color: "#fff",
               position: "relative",
+              boxShadow: "0 20px 60px rgba(2, 44, 34, 0.45), 0 0 80px rgba(16, 185, 129, 0.06)",
+              border: "1px solid rgba(52, 211, 153, 0.15)",
             }}
           >
-            <Box
-              sx={{
-                position: "absolute",
-                inset: 0,
-                background:
-                  "radial-gradient(circle at top left, rgba(255,255,255,0.25), transparent 55%), radial-gradient(circle at 90% 20%, rgba(255,255,255,0.18), transparent 45%)",
-                opacity: 0.7,
-              }}
-            />
-            <CardContent sx={{ position: "relative", zIndex: 1, py: 4 }}>
-              <Grid container spacing={3} alignItems="center">
+            {/* Ambient orbs */}
+            <Box sx={{ position: "absolute", inset: 0, overflow: "hidden", pointerEvents: "none" }}>
+              <Box sx={{ position: "absolute", top: -80, right: -60, width: 240, height: 240, borderRadius: "50%", background: "radial-gradient(circle, rgba(52, 211, 153, 0.18), transparent 70%)", animation: "float 8s ease-in-out infinite" }} />
+              <Box sx={{ position: "absolute", bottom: -60, left: "30%", width: 180, height: 180, borderRadius: "50%", background: "radial-gradient(circle, rgba(6, 182, 212, 0.15), transparent 70%)", animation: "float 10s ease-in-out infinite 2s" }} />
+            </Box>
+
+            <CardContent sx={{ position: "relative", zIndex: 1, py: { xs: 3.5, md: 5 }, px: { xs: 3, md: 4 } }}>
+              <Grid container spacing={4} alignItems="center">
                 <Grid item xs={12} md={7}>
-                  <Typography variant="overline" sx={{ letterSpacing: "0.25em", opacity: 0.8 }}>
-                    Your Command Center
+                  <Typography
+                    sx={{
+                      fontSize: "0.7rem", fontWeight: 700, letterSpacing: "0.25em",
+                      textTransform: "uppercase", color: "rgba(52, 211, 153, 0.9)", mb: 1.5
+                    }}
+                  >
+                    ✦ Your Command Center
                   </Typography>
-                  <Typography variant="h3" sx={{ fontWeight: 700, mb: 1 }}>
-                    Build a focused study rhythm.
+                  <Typography
+                    variant="h3"
+                    sx={{
+                      fontWeight: 800, mb: 1.5,
+                      fontSize: { xs: "1.75rem", md: "2.3rem" },
+                      lineHeight: 1.15,
+                      color: "#fff",
+                    }}
+                  >
+                    Build a focused<br />study rhythm.
                   </Typography>
-                  <Typography variant="body1" sx={{ opacity: 0.85, maxWidth: 520 }}>
+                  <Typography
+                    variant="body1"
+                    sx={{ color: "rgba(255,255,255,0.7)", maxWidth: 480, fontSize: "0.95rem", lineHeight: 1.7, mb: 3 }}
+                  >
                     Generate adaptive plans, track momentum, and keep streaks alive across every subject.
                   </Typography>
-                  <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5} sx={{ mt: 3 }}>
-                    <Chip
-                      label={`Plan: ${days} days`}
-                      sx={{ background: "rgba(255,255,255,0.2)", color: "#fff", fontWeight: 600 }}
-                    />
-                    <Chip
-                      label={`Topics: ${totalTopics || "--"}`}
-                      sx={{ background: "rgba(255,255,255,0.2)", color: "#fff", fontWeight: 600 }}
-                    />
-                    <Chip
-                      label={`Completion: ${totalProgress}%`}
-                      sx={{ background: "rgba(255,255,255,0.2)", color: "#fff", fontWeight: 600 }}
-                    />
+                  <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap sx={{ gap: 1 }}>
+                    {[
+                      { label: `📅 ${days} days`, bg: "rgba(52, 211, 153, 0.15)", border: "rgba(52, 211, 153, 0.3)" },
+                      { label: `📚 ${totalTopics || "--"} topics`, bg: "rgba(6, 182, 212, 0.15)", border: "rgba(6, 182, 212, 0.3)" },
+                      { label: `🎯 ${totalProgress}%`, bg: "rgba(251, 191, 36, 0.15)", border: "rgba(251, 191, 36, 0.3)" },
+                    ].map((chip) => (
+                      <Chip
+                        key={chip.label}
+                        label={chip.label}
+                        size="small"
+                        sx={{
+                          background: chip.bg, color: "#fff", fontWeight: 700,
+                          border: `1px solid ${chip.border}`, borderRadius: "8px",
+                          fontSize: "0.8rem", height: 32,
+                          transition: "all 0.2s ease",
+                          "&:hover": { transform: "translateY(-1px)", filter: "brightness(1.15)" }
+                        }}
+                      />
+                    ))}
                   </Stack>
                 </Grid>
+
                 <Grid item xs={12} md={5}>
                   <Card
                     sx={{
-                      background: "rgba(11, 31, 36, 0.35)",
-                      borderRadius: 3,
-                      border: "1px solid rgba(255,255,255,0.2)",
+                      background: "rgba(255,255,255,0.06)",
+                      borderRadius: "16px",
+                      border: "1px solid rgba(255,255,255,0.1)",
                       color: "#fff",
-                      boxShadow: "none",
+                      backdropFilter: "blur(16px)",
                     }}
                   >
-                    <CardContent>
-                      <Typography variant="subtitle2" sx={{ opacity: 0.8, letterSpacing: "0.1em" }}>
+                    <CardContent sx={{ p: 2.5 }}>
+                      <Typography sx={{ fontSize: "0.65rem", fontWeight: 700, letterSpacing: "0.2em", textTransform: "uppercase", color: "rgba(52, 211, 153, 0.8)", mb: 1.5 }}>
                         Today's Focus
                       </Typography>
-                      <Typography variant="h4" sx={{ fontWeight: 700, mt: 1 }}>
+                      <Typography variant="h5" sx={{ fontWeight: 800, fontSize: "1.4rem", color: "#fff", mb: 2 }}>
                         {subject}
                       </Typography>
-                      <Divider sx={{ my: 2, borderColor: "rgba(255,255,255,0.2)" }} />
-                      <Stack spacing={1}>
-                        <Typography variant="body2" sx={{ opacity: 0.85 }}>
-                          Level: {level}
-                        </Typography>
-                        <Typography variant="body2" sx={{ opacity: 0.85 }}>
-                          Hours/day: {hours}
-                        </Typography>
-                        <Typography variant="body2" sx={{ opacity: 0.85 }}>
-                          Tools ready: Pomodoro, Flashcards, Streak
-                        </Typography>
+                      <Divider sx={{ borderColor: "rgba(255,255,255,0.1)", mb: 2 }} />
+                      <Stack spacing={1.5}>
+                        {[
+                          { dot: "#34d399", text: `Level: ${level}` },
+                          { dot: "#22d3ee", text: `Hours/day: ${hours}` },
+                          { dot: "#fbbf24", text: "Tools: Pomodoro, Cards, Streak" },
+                        ].map((item) => (
+                          <Box key={item.text} sx={{ display: "flex", alignItems: "center", gap: 1.2 }}>
+                            <Box sx={{ width: 6, height: 6, borderRadius: "50%", background: item.dot, boxShadow: `0 0 8px ${item.dot}60` }} />
+                            <Typography variant="body2" sx={{ color: "rgba(255,255,255,0.8)", fontWeight: 500, fontSize: "0.85rem" }}>
+                              {item.text}
+                            </Typography>
+                          </Box>
+                        ))}
                       </Stack>
                     </CardContent>
                   </Card>
@@ -1105,24 +1409,71 @@ function App() {
         </Box>
         {/* STUDY HISTORY PANEL */}
         {showHistory && (
-          <Card sx={{ mb: 3, borderRadius: 3, background: "#F0F9FF", border: `2px solid ${COLORS.secondary}` }}>
+          <Card 
+            sx={{ 
+              mb: 3, 
+              borderRadius: 3, 
+              background: "linear-gradient(135deg, rgba(240, 249, 255, 0.95), rgba(224, 242, 254, 0.9))", 
+              border: `2px solid ${COLORS.secondary}`,
+              boxShadow: "0 8px 24px rgba(14, 165, 233, 0.15)",
+              backdropFilter: "blur(10px)",
+              transition: "all 0.3s ease",
+              "&:hover": {
+                boxShadow: "0 12px 32px rgba(14, 165, 233, 0.2)",
+                transform: "translateY(-2px)"
+              }
+            }}
+          >
             <CardContent>
-              <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 2 }}>
-                <Typography variant="h6" sx={{ fontWeight: 700 }}>
+              <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 2.5 }}>
+                <Typography variant="h6" sx={{ fontWeight: 700, color: COLORS.primary }}>
                   📚 Your Study History
                 </Typography>
-                <Button size="small" onClick={() => setShowHistory(false)}>Close</Button>
+                <Button 
+                  size="small" 
+                  onClick={() => setShowHistory(false)}
+                  sx={{ 
+                    borderRadius: 2,
+                    textTransform: "none",
+                    fontWeight: 600
+                  }}
+                >
+                  Close
+                </Button>
               </Box>
-              <Divider sx={{ mb: 2 }} />
+              <Divider sx={{ mb: 2, borderColor: "rgba(14, 165, 233, 0.3)" }} />
               {studyHistory.length === 0 ? (
-                <Typography color="textSecondary">No study history yet. Start planning!</Typography>
+                <Box sx={{ textAlign: "center", py: 3 }}>
+                  <Typography color="textSecondary" sx={{ fontSize: "0.95rem" }}>
+                    No study history yet. Start planning!
+                  </Typography>
+                </Box>
               ) : (
                 <List>
                   {studyHistory.map((entry) => (
-                    <ListItem key={entry.id} sx={{ borderBottom: "1px solid #E2E8F0", "&:last-child": { borderBottom: "none" } }}>
+                    <ListItem 
+                      key={entry.id} 
+                      sx={{ 
+                        borderBottom: "1px solid rgba(14, 165, 233, 0.2)", 
+                        "&:last-child": { borderBottom: "none" },
+                        transition: "all 0.2s ease",
+                        "&:hover": {
+                          background: "rgba(14, 165, 233, 0.08)",
+                          borderRadius: 2
+                        }
+                      }}
+                    >
                       <ListItemText
-                        primary={`${allSubjects[entry.subject]?.emoji} ${entry.subject} - ${entry.level}`}
-                        secondary={`📅 ${entry.createdAt} | ⏱️ ${entry.days} days × ${entry.hours}h/day`}
+                        primary={
+                          <Typography sx={{ fontWeight: 600, color: "#0f766e" }}>
+                            {allSubjects[entry.subject]?.emoji} {entry.subject} - {entry.level}
+                          </Typography>
+                        }
+                        secondary={
+                          <Typography variant="caption" sx={{ color: "#64748B", mt: 0.5 }}>
+                            📅 {entry.createdAt} | ⏱️ {entry.days} days × {entry.hours}h/day
+                          </Typography>
+                        }
                       />
                     </ListItem>
                   ))}
@@ -1133,19 +1484,48 @@ function App() {
         )}
 
         {/* CONTROLS */}
-        <Paper elevation={0} sx={{ p: 2, mb: 2, background: COLORS.cardBg, borderRadius: 3, border: `1px solid #E2E8F0` }}>
-          <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>
+        <Paper 
+          elevation={0} 
+          sx={{ 
+            p: 3, 
+            mb: 3, 
+            background: "linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.95))", 
+            borderRadius: 3, 
+            border: `1px solid rgba(14, 165, 233, 0.15)`,
+            boxShadow: "0 4px 20px rgba(0, 0, 0, 0.06)",
+            backdropFilter: "blur(10px)",
+            transition: "all 0.3s ease",
+            "&:hover": {
+              boxShadow: "0 8px 28px rgba(0, 0, 0, 0.08)",
+              borderColor: "rgba(14, 165, 233, 0.25)"
+            }
+          }}
+        >
+          <Typography variant="h6" sx={{ mb: 3, fontWeight: 700, color: COLORS.primary }}>
             📋 Plan Your Study
           </Typography>
 
           {/* Subject Selection Card */}
-          <Card sx={{ mb: 2, borderRadius: 2, background: "#F0F9FF", border: `2px solid ${COLORS.secondary}` }}>
-            <CardContent>
+          <Card 
+            sx={{ 
+              mb: 3, 
+              borderRadius: 2.5, 
+              background: "linear-gradient(135deg, rgba(240, 249, 255, 0.9), rgba(224, 242, 254, 0.85))", 
+              border: `2px solid ${COLORS.secondary}`,
+              boxShadow: "0 4px 16px rgba(14, 165, 233, 0.12)",
+              transition: "all 0.3s ease",
+              "&:hover": {
+                boxShadow: "0 6px 24px rgba(14, 165, 233, 0.18)",
+                transform: "translateY(-2px)"
+              }
+            }}
+          >
+            <CardContent sx={{ p: 2.5 }}>
               <Box>
-                <Typography variant="h6" sx={{ fontWeight: 700, mb: 1 }}>
+                <Typography variant="h6" sx={{ fontWeight: 700, mb: 0.5, color: "#0f766e" }}>
                   {currentSubjectData?.emoji} {currentSubjectData?.fullName}
                 </Typography>
-                <Typography variant="body2" color="textSecondary">
+                <Typography variant="body2" sx={{ color: "#64748B", lineHeight: 1.5 }}>
                   {currentSubjectData?.description}
                 </Typography>
               </Box>
@@ -1153,14 +1533,21 @@ function App() {
           </Card>
 
           {/* Form Controls */}
-          <Grid container spacing={2}>
+          <Grid container spacing={2.5}>
             <Grid item xs={12} sm={6} md={2.5}>
               <FormControl fullWidth>
-                <InputLabel sx={{ fontSize: '0.9rem' }}>Subject</InputLabel>
+                <InputLabel sx={{ fontSize: '0.9rem', fontWeight: 500 }}>Subject</InputLabel>
                 <Select
                   value={subject}
                   onChange={(e) => setSubject(e.target.value)}
-                  sx={{ borderRadius: 2 }}
+                  sx={{ 
+                    borderRadius: 2,
+                    "& .MuiOutlinedInput-root": {
+                      "&:hover fieldset": {
+                        borderColor: COLORS.secondary
+                      }
+                    }
+                  }}
                   label="Subject"
                 >
                   {Object.entries(allSubjects).map(([key, data]) => (
@@ -1180,6 +1567,13 @@ function App() {
                 value={days}
                 onChange={(e) => setDays(Math.max(1, +e.target.value))}
                 inputProps={{ min: 1, max: 365 }}
+                sx={{
+                  "& .MuiOutlinedInput-root": {
+                    "&:hover fieldset": {
+                      borderColor: COLORS.secondary
+                    }
+                  }
+                }}
               />
             </Grid>
 
@@ -1191,16 +1585,30 @@ function App() {
                 value={hours}
                 onChange={(e) => setHours(Math.max(0.5, +e.target.value))}
                 inputProps={{ min: 0.5, step: 0.5 }}
+                sx={{
+                  "& .MuiOutlinedInput-root": {
+                    "&:hover fieldset": {
+                      borderColor: COLORS.secondary
+                    }
+                  }
+                }}
               />
             </Grid>
 
             <Grid item xs={12} sm={6} md={2}>
               <FormControl fullWidth>
-                <InputLabel sx={{ fontSize: '0.9rem' }}>Level</InputLabel>
+                <InputLabel sx={{ fontSize: '0.9rem', fontWeight: 500 }}>Level</InputLabel>
                 <Select
                   value={level}
                   onChange={(e) => setLevel(e.target.value)}
-                  sx={{ borderRadius: 2 }}
+                  sx={{ 
+                    borderRadius: 2,
+                    "& .MuiOutlinedInput-root": {
+                      "&:hover fieldset": {
+                        borderColor: COLORS.secondary
+                      }
+                    }
+                  }}
                   label="Level"
                 >
                   <MenuItem value="Beginner">🌱 Beginner</MenuItem>
@@ -1214,7 +1622,18 @@ function App() {
               <Button
                 fullWidth
                 variant="contained"
-                sx={{ background: `linear-gradient(135deg, ${COLORS.primary}, ${COLORS.secondary})`, borderRadius: 2, fontWeight: 600, py: 1.5 }}
+                sx={{ 
+                  background: `linear-gradient(135deg, ${COLORS.primary}, ${COLORS.secondary})`, 
+                  borderRadius: 2, 
+                  fontWeight: 600, 
+                  py: 1.5,
+                  boxShadow: "0 4px 14px rgba(15, 118, 110, 0.3)",
+                  transition: "all 0.3s ease",
+                  "&:hover": {
+                    boxShadow: "0 6px 20px rgba(15, 118, 110, 0.4)",
+                    transform: "translateY(-2px)"
+                  }
+                }}
                 onClick={generatePlan}
               >
                 🚀 Generate
@@ -1225,7 +1644,20 @@ function App() {
               <Button
                 fullWidth
                 variant="outlined"
-                sx={{ borderColor: COLORS.primary, color: COLORS.primary, borderRadius: 2, fontWeight: 600, py: 1.5 }}
+                sx={{ 
+                  borderColor: COLORS.primary, 
+                  color: COLORS.primary, 
+                  borderRadius: 2, 
+                  fontWeight: 600, 
+                  py: 1.5,
+                  borderWidth: 2,
+                  transition: "all 0.3s ease",
+                  "&:hover": {
+                    background: "rgba(15, 118, 110, 0.05)",
+                    borderWidth: 2,
+                    transform: "translateY(-2px)"
+                  }
+                }}
                 onClick={() => setShowCustomDialog(true)}
               >
                 ✨ Custom Plan
@@ -1235,8 +1667,30 @@ function App() {
         </Paper>
 
         {/* CUSTOM SUBJECT DIALOG */}
-        <Dialog open={showCustomDialog} onClose={() => setShowCustomDialog(false)} maxWidth="md" fullWidth>
-          <DialogTitle sx={{ fontWeight: 600, fontSize: '1.3rem', background: `linear-gradient(135deg, ${COLORS.primary}, ${COLORS.secondary})`, color: '#fff' }}>
+        <Dialog 
+          open={showCustomDialog} 
+          onClose={() => setShowCustomDialog(false)} 
+          maxWidth="md" 
+          fullWidth
+          PaperProps={{
+            sx: {
+              borderRadius: 3,
+              boxShadow: "0 20px 60px rgba(0, 0, 0, 0.2)",
+              background: "linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.95))",
+              backdropFilter: "blur(20px)"
+            }
+          }}
+        >
+          <DialogTitle 
+            sx={{ 
+              fontWeight: 700, 
+              fontSize: '1.4rem', 
+              background: `linear-gradient(135deg, ${COLORS.primary}, ${COLORS.secondary})`, 
+              color: '#fff',
+              py: 3,
+              borderBottom: "1px solid rgba(255,255,255,0.1)"
+            }}
+          >
             ✨ Create Custom Study Plan
           </DialogTitle>
           <DialogContent sx={{ pt: 3 }}>
@@ -1246,21 +1700,39 @@ function App() {
               placeholder="e.g., Advanced Databases, Cloud Computing"
               value={customSubjectName}
               onChange={(e) => setCustomSubjectName(e.target.value)}
-              sx={{ mb: 3 }}
+              sx={{ 
+                mb: 3,
+                "& .MuiOutlinedInput-root": {
+                  "&:hover fieldset": {
+                    borderColor: COLORS.secondary
+                  }
+                }
+              }}
             />
 
-            <Typography variant="h6" sx={{ fontWeight: 600, mb: 2 }}>
+            <Typography variant="h6" sx={{ fontWeight: 700, mb: 2.5, color: COLORS.primary }}>
               📚 Add Topics by Level
             </Typography>
 
-            <Tabs value={customLevelTab} onChange={(e, v) => setCustomLevelTab(v)} sx={{ mb: 2, borderBottom: `2px solid ${COLORS.secondary}` }}>
-              <Tab label="🌱 Beginner" sx={{ fontWeight: 600 }} />
-              <Tab label="📈 Intermediate" sx={{ fontWeight: 600 }} />
-              <Tab label="🚀 Advanced" sx={{ fontWeight: 600 }} />
+            <Tabs 
+              value={customLevelTab} 
+              onChange={(e, v) => setCustomLevelTab(v)} 
+              sx={{ 
+                mb: 3, 
+                borderBottom: `2px solid ${COLORS.secondary}40`,
+                "& .MuiTab-root": {
+                  fontWeight: 600,
+                  textTransform: "none"
+                }
+              }}
+            >
+              <Tab label="🌱 Beginner" />
+              <Tab label="📈 Intermediate" />
+              <Tab label="🚀 Advanced" />
             </Tabs>
 
             <Box sx={{ display: customLevelTab === 0 ? 'block' : 'none' }}>
-              <Typography variant="caption" color="textSecondary" sx={{ display: 'block', mb: 1 }}>
+              <Typography variant="caption" color="textSecondary" sx={{ display: 'block', mb: 1.5, fontWeight: 500 }}>
                 💡 Add beginner-level topics (one per line)
               </Typography>
               <TextField
@@ -1271,11 +1743,18 @@ function App() {
                 placeholder="Topic 1&#10;Topic 2&#10;Topic 3"
                 value={customTopics.Beginner}
                 onChange={(e) => setCustomTopics({ ...customTopics, Beginner: e.target.value })}
+                sx={{
+                  "& .MuiOutlinedInput-root": {
+                    "&:hover fieldset": {
+                      borderColor: COLORS.secondary
+                    }
+                  }
+                }}
               />
             </Box>
 
             <Box sx={{ display: customLevelTab === 1 ? 'block' : 'none' }}>
-              <Typography variant="caption" color="textSecondary" sx={{ display: 'block', mb: 1 }}>
+              <Typography variant="caption" color="textSecondary" sx={{ display: 'block', mb: 1.5, fontWeight: 500 }}>
                 💡 Add intermediate-level topics (one per line)
               </Typography>
               <TextField
@@ -1286,11 +1765,18 @@ function App() {
                 placeholder="Topic 1&#10;Topic 2&#10;Topic 3"
                 value={customTopics.Intermediate}
                 onChange={(e) => setCustomTopics({ ...customTopics, Intermediate: e.target.value })}
+                sx={{
+                  "& .MuiOutlinedInput-root": {
+                    "&:hover fieldset": {
+                      borderColor: COLORS.secondary
+                    }
+                  }
+                }}
               />
             </Box>
 
             <Box sx={{ display: customLevelTab === 2 ? 'block' : 'none' }}>
-              <Typography variant="caption" color="textSecondary" sx={{ display: 'block', mb: 1 }}>
+              <Typography variant="caption" color="textSecondary" sx={{ display: 'block', mb: 1.5, fontWeight: 500 }}>
                 💡 Add advanced-level topics (one per line)
               </Typography>
               <TextField
@@ -1301,16 +1787,55 @@ function App() {
                 placeholder="Topic 1&#10;Topic 2&#10;Topic 3"
                 value={customTopics.Advanced}
                 onChange={(e) => setCustomTopics({ ...customTopics, Advanced: e.target.value })}
+                sx={{
+                  "& .MuiOutlinedInput-root": {
+                    "&:hover fieldset": {
+                      borderColor: COLORS.secondary
+                    }
+                  }
+                }}
               />
             </Box>
 
-            <Alert severity="info" sx={{ mt: 2 }}>
+            <Alert 
+              severity="info" 
+              sx={{ 
+                mt: 3,
+                borderRadius: 2,
+                background: "linear-gradient(135deg, rgba(14, 165, 233, 0.1), rgba(15, 118, 110, 0.1))",
+                border: "1px solid rgba(14, 165, 233, 0.3)"
+              }}
+            >
               📌 Tip: Topics will appear exactly as you type them in your study plan!
             </Alert>
           </DialogContent>
-          <DialogActions sx={{ p: 2 }}>
-            <Button onClick={() => { setShowCustomDialog(false); setCustomTopics({ Beginner: "", Intermediate: "", Advanced: "" }); setCustomLevelTab(0); }}>Cancel</Button>
-            <Button variant="contained" sx={{ background: COLORS.primary }} onClick={handleCreateCustomSubject}>
+          <DialogActions sx={{ p: 3, gap: 1.5 }}>
+            <Button 
+              onClick={() => { setShowCustomDialog(false); setCustomTopics({ Beginner: "", Intermediate: "", Advanced: "" }); setCustomLevelTab(0); }}
+              sx={{ 
+                borderRadius: 2,
+                fontWeight: 600,
+                px: 3
+              }}
+            >
+              Cancel
+            </Button>
+            <Button 
+              variant="contained" 
+              sx={{ 
+                background: `linear-gradient(135deg, ${COLORS.primary}, ${COLORS.secondary})`,
+                borderRadius: 2,
+                fontWeight: 600,
+                px: 3,
+                boxShadow: "0 4px 14px rgba(15, 118, 110, 0.3)",
+                transition: "all 0.3s ease",
+                "&:hover": {
+                  boxShadow: "0 6px 20px rgba(15, 118, 110, 0.4)",
+                  transform: "translateY(-2px)"
+                }
+              }} 
+              onClick={handleCreateCustomSubject}
+            >
               Create Custom Plan
             </Button>
           </DialogActions>
@@ -1379,50 +1904,94 @@ function App() {
             </Grid>
 
             {/* ACTIVE STUDY SECTION: Pomodoro, Flashcards, Streak */}
-            <Typography variant="h5" sx={{ fontWeight: 700, mb: 2, color: COLORS.primary, mt: 2 }}>
-              🔥 Active Study Tools
-            </Typography>
-            <Grid container spacing={2} sx={{ mb: 3, alignItems: "stretch" }}>
-              <Grid item xs={12} md={4}>
-                <PomodoroTimer 
-                  planId={currentPlanId}
-                  topic={subject}
-                  onSessionComplete={handlePomodoroComplete}
-                />
+            <Box sx={{ 
+              background: "linear-gradient(135deg, #064e3b 0%, #065f46 100%)",
+              borderRadius: 3,
+              p: 3,
+              mb: 4,
+              border: "1px solid #047857"
+            }}>
+              <Typography variant="h5" sx={{ fontWeight: 700, mb: 3, color: "#34d399", mt: 0, fontSize: "1.4rem" }}>
+                🔥 Active Study Tools
+              </Typography>
+              <Grid container spacing={2.5} sx={{ alignItems: "stretch" }}>
+                <Grid item xs={12} md={4}>
+                  <Box sx={{ 
+                    transition: "all 0.3s ease",
+                    "&:hover": {
+                      transform: "translateY(-4px)"
+                    }
+                  }}>
+                    <PomodoroTimer 
+                      planId={currentPlanId}
+                      topic={subject}
+                      onSessionComplete={handlePomodoroComplete}
+                    />
+                  </Box>
+                </Grid>
+                <Grid item xs={12} md={4}>
+                  <Box sx={{ 
+                    transition: "all 0.3s ease",
+                    "&:hover": {
+                      transform: "translateY(-4px)"
+                    }
+                  }}>
+                    <StreakTracker 
+                      streak={streakData}
+                      onUpdateStreak={updateStreak}
+                    />
+                  </Box>
+                </Grid>
+                <Grid item xs={12} md={4}>
+                  <Box sx={{ 
+                    transition: "all 0.3s ease",
+                    "&:hover": {
+                      transform: "translateY(-4px)"
+                    }
+                  }}>
+                    <FlashcardWidget 
+                      planId={currentPlanId}
+                      flashcards={flashcards}
+                      onAddFlashcard={handleAddFlashcard}
+                      onDeleteFlashcard={handleDeleteFlashcard}
+                    />
+                  </Box>
+                </Grid>
               </Grid>
-              <Grid item xs={12} md={4}>
-                <StreakTracker 
-                  streak={streakData}
-                  onUpdateStreak={updateStreak}
-                />
-              </Grid>
-              <Grid item xs={12} md={4}>
-                <FlashcardWidget 
-                  planId={currentPlanId}
-                  flashcards={flashcards}
-                  onAddFlashcard={handleAddFlashcard}
-                  onDeleteFlashcard={handleDeleteFlashcard}
-                />
-              </Grid>
-            </Grid>
+            </Box>
 
             {/* ANALYTICS SECTION */}
-            <Typography variant="h5" sx={{ fontWeight: 700, mb: 2, color: COLORS.primary, mt: 2 }}>
-              📈 Course Analytics & Progress
-            </Typography>
-            <Grid container spacing={2} sx={{ mb: 2 }}>
-              <Grid item xs={12}>
-                <ProgressChart
-                  analytics={planAnalytics || {
-                    completion_percentage: totalProgress,
-                    total_sessions: 0,
-                    total_hours: 0,
-                    topics_completed: pieData[0].value,
-                    topic_progress: {}
-                  }}
-                />
+            <Box sx={{ 
+              background: "linear-gradient(135deg, #0f766e 0%, #115e59 100%)",
+              borderRadius: 3,
+              p: 3,
+              mb: 4,
+              border: "1px solid #0d9488"
+            }}>
+              <Typography variant="h5" sx={{ fontWeight: 700, mb: 3, color: "#5eead4", mt: 0, fontSize: "1.4rem" }}>
+                📈 Course Analytics & Progress
+              </Typography>
+              <Grid container spacing={2.5}>
+                <Grid item xs={12}>
+                  <Box sx={{ 
+                    transition: "all 0.3s ease",
+                    "&:hover": {
+                      transform: "translateY(-2px)"
+                    }
+                  }}>
+                    <ProgressChart
+                      analytics={planAnalytics || {
+                        completion_percentage: totalProgress,
+                        total_sessions: 0,
+                        total_hours: 0,
+                        topics_completed: pieData[0].value,
+                        topic_progress: {}
+                      }}
+                    />
+                  </Box>
+                </Grid>
               </Grid>
-            </Grid>
+            </Box>
 
 <Divider sx={{ my: 2 }} />
           </Box>
@@ -1430,54 +1999,165 @@ function App() {
 
         {/* DAY CARDS - ENHANCED */}
         {plan.length > 0 && (
-          <Box sx={{ mt: 1 }}>
-            <Typography variant="h6" sx={{ fontWeight: 600, mb: 2, color: COLORS.primary }}>
+          <Box sx={{ 
+            mt: 1,
+            background: "linear-gradient(135deg, #0e7490 0%, #155e75 100%)",
+            borderRadius: 3,
+            p: 3,
+            border: "1px solid #0891b2"
+          }}>
+            <Typography variant="h6" sx={{ fontWeight: 700, mb: 3, color: "#67e8f9", fontSize: "1.25rem" }}>
               📅 Your Study Plan ({days} Days)
             </Typography>
-            <Grid container spacing={2}>
+            <Grid container spacing={2.5}>
               {plan.map((day, i) => {
                 const status = statusInfo(day);
                 return (
                   <Grid item xs={12} key={i}>
-                    <Accordion defaultExpanded={i === 0} sx={{ borderRadius: 2, border: `2px solid ${status.color}20` }}>
-                      <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={{ background: "#F9FAFB", py: 2 }}>
-                        <Box sx={{ display: "flex", alignItems: "center", gap: 2, width: "100%" }}>
-                          <Typography variant="h6" sx={{ fontWeight: 700, color: COLORS.primary, minWidth: 80 }}>
-                            Day {day.day}
-                          </Typography>
-                          <Box sx={{ flex: 1 }}>
-                            <LinearProgress variant="determinate" value={dayProgress(day)} sx={{ height: 8, borderRadius: 4, background: "#E2E8F0", "& .MuiLinearProgress-bar": { background: status.color } }} />
+                    <Accordion 
+                      defaultExpanded={i === 0} 
+                      sx={{ 
+                        borderRadius: 2.5, 
+                        border: `2px solid ${status.color}30`,
+                        boxShadow: "0 2px 12px rgba(0, 0, 0, 0.06)",
+                        transition: "all 0.3s ease",
+                        "&:hover": {
+                          boxShadow: "0 4px 20px rgba(0, 0, 0, 0.1)",
+                          transform: "translateY(-2px)"
+                        },
+                        "&::before": {
+                          display: "none"
+                        }
+                      }}
+                    >
+                      <AccordionSummary 
+                        expandIcon={<ExpandMoreIcon sx={{ color: COLORS.primary }} />} 
+                        sx={{ 
+                          background: "linear-gradient(135deg, #F9FAFB 0%, #F0F9FF 100%)", 
+                          py: 2.5,
+                          px: 2,
+                          transition: "all 0.2s ease",
+                          "&:hover": {
+                            background: "linear-gradient(135deg, #F0F9FF 0%, #E0F2FE 100%)"
+                          }
+                        }}
+                      >
+                        <Box sx={{ display: "flex", alignItems: "center", gap: 2.5, width: "100%" }}>
+                          <Box sx={{ 
+                            minWidth: 70,
+                            height: 45,
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            background: `linear-gradient(135deg, ${status.color}20, ${status.color}10)`,
+                            borderRadius: 2,
+                            border: `2px solid ${status.color}40`
+                          }}>
+                            <Typography variant="h6" sx={{ fontWeight: 800, color: status.color, fontSize: "1rem" }}>
+                              Day {day.day}
+                            </Typography>
                           </Box>
-                          <Box sx={{ display: "flex", gap: 1, alignItems: "center" }}>
-                            <Typography variant="caption" sx={{ fontWeight: 600, color: status.color }}>
+                          <Box sx={{ flex: 1 }}>
+                            <LinearProgress 
+                              variant="determinate" 
+                              value={dayProgress(day)} 
+                              sx={{ 
+                                height: 10, 
+                                borderRadius: 5, 
+                                background: "#E2E8F0", 
+                                "& .MuiLinearProgress-bar": { 
+                                  background: `linear-gradient(90deg, ${status.color}, ${status.color}CC)`,
+                                  borderRadius: 5
+                                } 
+                              }} 
+                            />
+                          </Box>
+                          <Box sx={{ display: "flex", gap: 1.5, alignItems: "center" }}>
+                            <Typography variant="caption" sx={{ fontWeight: 700, color: status.color, fontSize: "0.9rem" }}>
                               {dayProgress(day)}%
                             </Typography>
-                            <Chip label={status.text} size="small" sx={{ background: status.color, color: "#fff" }} />
+                            <Chip 
+                              label={status.text} 
+                              size="small" 
+                              sx={{ 
+                                background: status.color, 
+                                color: "#fff",
+                                fontWeight: 600,
+                                boxShadow: `0 2px 8px ${status.color}60`
+                              }} 
+                            />
                           </Box>
                         </Box>
                       </AccordionSummary>
 
-                      <AccordionDetails sx={{ pt: 3, background: "#FAFBFC" }}>
+                      <AccordionDetails sx={{ pt: 3, background: "#FAFBFC", px: 2 }}>
                         {day.topics && day.topics.length > 0 ? (
                           <>
                             <List sx={{ p: 0 }}>
                               {day.topics.map((topic, j) => (
-                                <ListItem key={j} sx={{ py: 1.5, borderBottom: "1px solid #E2E8F0", "&:last-child": { borderBottom: "none" }, transition: "all 0.2s", cursor: "pointer", "&:hover": { background: "#F0F9FF" } }} onClick={() => toggleSubtopic(i, j)}>
-                                  <ListItemIcon sx={{ minWidth: 40 }}>
+                                <ListItem 
+                                  key={j} 
+                                  sx={{ 
+                                    py: 2, 
+                                    px: 2,
+                                    mb: 1,
+                                    borderRadius: 2,
+                                    borderBottom: "none", 
+                                    background: "#fff",
+                                    border: "1px solid #E2E8F0",
+                                    transition: "all 0.2s ease", 
+                                    cursor: "pointer", 
+                                    "&:hover": { 
+                                      background: "linear-gradient(135deg, #F0F9FF, #E0F2FE)",
+                                      borderColor: COLORS.secondary,
+                                      transform: "translateX(4px)",
+                                      boxShadow: "0 2px 8px rgba(14, 165, 233, 0.15)"
+                                    }
+                                  }} 
+                                  onClick={() => toggleSubtopic(i, j)}
+                                >
+                                  <ListItemIcon sx={{ minWidth: 48 }}>
                                     {topic.completed ? (
-                                      <CheckCircleIcon sx={{ color: COLORS.ahead, fontSize: 24 }} />
+                                      <Box sx={{ 
+                                        width: 28, 
+                                        height: 28, 
+                                        borderRadius: "50%", 
+                                        background: `linear-gradient(135deg, ${COLORS.ahead}, ${COLORS.ahead}CC)`,
+                                        display: "flex",
+                                        alignItems: "center",
+                                        justifyContent: "center",
+                                        boxShadow: `0 2px 8px ${COLORS.ahead}60`
+                                      }}>
+                                        <CheckCircleIcon sx={{ color: "#fff", fontSize: 18 }} />
+                                      </Box>
                                     ) : (
-                                      <RadioButtonUncheckedIcon sx={{ color: "#CBD5E1", fontSize: 24 }} />
+                                      <Box sx={{ 
+                                        width: 28, 
+                                        height: 28, 
+                                        borderRadius: "50%", 
+                                        background: "#F1F5F9",
+                                        display: "flex",
+                                        alignItems: "center",
+                                        justifyContent: "center",
+                                        border: "2px solid #CBD5E1"
+                                      }}>
+                                        <RadioButtonUncheckedIcon sx={{ color: "#94A3B8", fontSize: 18 }} />
+                                      </Box>
                                     )}
                                   </ListItemIcon>
                                   <ListItemText
                                     primary={
-                                      <Typography sx={{ fontWeight: 600, textDecoration: topic.completed ? "line-through" : "none", color: topic.completed ? "#94A3B8" : "#1E293B" }}>
+                                      <Typography sx={{ 
+                                        fontWeight: 600, 
+                                        textDecoration: topic.completed ? "line-through" : "none", 
+                                        color: topic.completed ? "#94A3B8" : "#1E293B",
+                                        fontSize: "0.95rem"
+                                      }}>
                                         {topic.name}
                                       </Typography>
                                     }
                                     secondary={
-                                      <Typography variant="caption" sx={{ color: "#64748B" }}>
+                                      <Typography variant="caption" sx={{ color: "#64748B", mt: 0.5, fontWeight: 500 }}>
                                         ⏱️ {topic.hours}h • Click to mark complete
                                       </Typography>
                                     }
@@ -1485,14 +2165,32 @@ function App() {
                                 </ListItem>
                               ))}
                             </List>
-                            <Box sx={{ mt: 2, pt: 2, borderTop: "2px solid #E2E8F0" }}>
-                              <Typography variant="caption" sx={{ fontWeight: 600, color: "#64748B" }}>
-                                ✅ {day.topics.filter(t => t.completed).length} of {day.topics.length} completed
+                            <Box sx={{ 
+                              mt: 2.5, 
+                              pt: 2.5, 
+                              borderTop: "2px solid #E2E8F0",
+                              display: "flex",
+                              alignItems: "center",
+                              gap: 1
+                            }}>
+                              <Box sx={{ 
+                                width: 8, 
+                                height: 8, 
+                                borderRadius: "50%", 
+                                background: COLORS.ahead,
+                                boxShadow: `0 0 8px ${COLORS.ahead}80`
+                              }} />
+                              <Typography variant="caption" sx={{ fontWeight: 600, color: "#64748B", fontSize: "0.85rem" }}>
+                                {day.topics.filter(t => t.completed).length} of {day.topics.length} completed
                               </Typography>
                             </Box>
                           </>
                         ) : (
-                          <Typography color="textSecondary">No topics for this day</Typography>
+                          <Box sx={{ textAlign: "center", py: 4 }}>
+                            <Typography color="textSecondary" sx={{ fontSize: "0.95rem" }}>
+                              No topics for this day
+                            </Typography>
+                          </Box>
                         )}
                       </AccordionDetails>
                     </Accordion>
@@ -1504,13 +2202,65 @@ function App() {
         )}
 
         {plan.length === 0 && (
-          <Paper elevation={0} sx={{ p: 8, textAlign: "center", borderRadius: 3, border: "2px dashed #CBD5E1" }}>
-            <Typography variant="h5" sx={{ color: "#64748B", fontWeight: 600, mb: 1 }}>
-              📚 No Plan Generated Yet
+          <Paper 
+            elevation={0} 
+            sx={{ 
+              p: 8, 
+              textAlign: "center", 
+              borderRadius: 3, 
+              border: "2px dashed rgba(14, 165, 233, 0.3)",
+              background: "linear-gradient(135deg, rgba(240, 249, 255, 0.5), rgba(255, 255, 255, 0.8))",
+              transition: "all 0.3s ease",
+              "&:hover": {
+                borderColor: "rgba(14, 165, 233, 0.5)",
+                background: "linear-gradient(135deg, rgba(240, 249, 255, 0.7), rgba(255, 255, 255, 0.9))",
+                transform: "translateY(-4px)",
+                boxShadow: "0 8px 24px rgba(14, 165, 233, 0.15)"
+              }
+            }}
+          >
+            <Box sx={{ mb: 3 }}>
+              <Box sx={{ 
+                width: 80, 
+                height: 80, 
+                borderRadius: "50%", 
+                background: "linear-gradient(135deg, rgba(14, 165, 233, 0.15), rgba(15, 118, 110, 0.15))",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                margin: "0 auto",
+                mb: 2
+              }}>
+                <Typography sx={{ fontSize: "2.5rem" }}>📚</Typography>
+              </Box>
+            </Box>
+            <Typography variant="h5" sx={{ color: "#0f766e", fontWeight: 700, mb: 1.5, fontSize: "1.5rem" }}>
+              No Plan Generated Yet
             </Typography>
-            <Typography variant="body2" color="textSecondary">
-              Choose a subject and click "Generate Plan" to start learning!
+            <Typography variant="body1" sx={{ color: "#64748B", maxWidth: 400, margin: "0 auto", lineHeight: 1.6 }}>
+              Choose a subject and click "Generate Plan" to start your learning journey!
             </Typography>
+            <Box sx={{ mt: 3 }}>
+              <Button
+                variant="contained"
+                sx={{
+                  background: `linear-gradient(135deg, ${COLORS.primary}, ${COLORS.secondary})`,
+                  borderRadius: 2,
+                  fontWeight: 600,
+                  px: 3,
+                  py: 1.2,
+                  boxShadow: "0 4px 14px rgba(15, 118, 110, 0.3)",
+                  transition: "all 0.3s ease",
+                  "&:hover": {
+                    boxShadow: "0 6px 20px rgba(15, 118, 110, 0.4)",
+                    transform: "translateY(-2px)"
+                  }
+                }}
+                onClick={() => document.querySelector('[aria-label="Subject"]')?.parentElement?.focus()}
+              >
+                Get Started
+              </Button>
+            </Box>
           </Paper>
         )}
       </Container>
@@ -1535,7 +2285,7 @@ function App() {
       <Route
         path="/admin"
         element={
-          isUserAdmin() && isAuthenticated ? (
+          isUserAdmin() ? (
             <AdminDashboard
               token={getToken()}
               onLogout={handleLogout}

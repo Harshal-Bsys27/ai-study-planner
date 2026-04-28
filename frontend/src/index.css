@@ -1,6 +1,48 @@
-@import url("https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;600&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap");
 
+/* ================================
+   DESIGN TOKENS
+================================ */
 :root {
+  /* Core Palette */
+  --color-bg: #0a0f1e;
+  --color-surface: #111827;
+  --color-surface-2: #1a2235;
+  --color-border: rgba(255, 255, 255, 0.08);
+  --color-border-accent: rgba(52, 211, 153, 0.3);
+
+  /* Accent Colors */
+  --color-emerald: #10b981;
+  --color-emerald-light: #34d399;
+  --color-emerald-dark: #059669;
+  --color-cyan: #06b6d4;
+  --color-amber: #f59e0b;
+  --color-rose: #f43f5e;
+  --color-violet: #8b5cf6;
+
+  /* Text */
+  --color-text-primary: #f1f5f9;
+  --color-text-secondary: #94a3b8;
+  --color-text-muted: #64748b;
+
+  /* Shadows */
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 20px 60px rgba(0, 0, 0, 0.5);
+  --shadow-emerald: 0 8px 32px rgba(16, 185, 129, 0.25);
+  --shadow-cyan: 0 8px 32px rgba(6, 182, 212, 0.2);
+
+  /* Fonts */
+  --font-sans: "Outfit", "Space Grotesk", sans-serif;
+  --font-mono: "JetBrains Mono", monospace;
+
+  /* Radii */
+  --radius-sm: 8px;
+  --radius-md: 14px;
+  --radius-lg: 20px;
+  --radius-xl: 28px;
+
+  /* Admin Shell colors (keep for backward compat) */
   --admin-ink: #0b1f24;
   --admin-muted: #4b5a5f;
   --admin-sand: #f6f3ee;
@@ -9,35 +51,80 @@
   --admin-accent-2: #f59e0b;
   --admin-accent-3: #0ea5e9;
   --admin-shadow: 0 18px 40px rgba(10, 24, 29, 0.12);
-  --admin-font-sans: "Space Grotesk", sans-serif;
-  --admin-font-mono: "IBM Plex Mono", monospace;
+  --admin-font-sans: "Outfit", "Space Grotesk", sans-serif;
+  --admin-font-mono: "JetBrains Mono", monospace;
 }
 
-* {
+/* ================================
+   RESET & BASE
+================================ */
+*, *::before, *::after {
   box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  scroll-behavior: smooth;
 }
 
 body {
-  margin: 0;
-  font-family: var(--admin-font-sans);
+  font-family: var(--font-sans);
   background-color: var(--admin-sand);
   color: var(--admin-ink);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
+/* ================================
+   GLASSMORPHISM UTILITIES
+================================ */
+.glass {
+  background: rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.glass-dark {
+  background: rgba(10, 15, 30, 0.7);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.glass-card {
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(15, 118, 110, 0.1);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.glass-card:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-lg);
+}
+
+/* ================================
+   ADMIN SHELL
+================================ */
 .admin-shell {
   position: relative;
   min-height: 100vh;
   background:
-    radial-gradient(circle at 20% 10%, rgba(14, 165, 233, 0.18), transparent 55%),
-    radial-gradient(circle at 90% 0%, rgba(245, 158, 11, 0.16), transparent 45%),
-    linear-gradient(120deg, #f6f3ee 0%, #f8faf8 60%, #f1f5f4 100%);
+    radial-gradient(circle at 20% 10%, rgba(14, 165, 233, 0.12), transparent 55%),
+    radial-gradient(circle at 90% 0%, rgba(245, 158, 11, 0.1), transparent 45%),
+    radial-gradient(circle at 50% 80%, rgba(16, 185, 129, 0.08), transparent 50%),
+    linear-gradient(135deg, #f0f9ff 0%, #f8faf8 50%, #f1f5f4 100%);
   overflow: hidden;
 }
 
 .admin-content {
   position: relative;
   z-index: 1;
-  animation: adminFade 0.6s ease-out;
+  animation: adminFade 0.5s ease-out;
 }
 
 .admin-ambient {
@@ -51,86 +138,176 @@ body {
 .admin-orb {
   position: absolute;
   border-radius: 999px;
-  opacity: 0.6;
-  filter: blur(0px);
-  animation: adminFloat 12s ease-in-out infinite;
+  opacity: 0.5;
+  filter: blur(40px);
+  animation: adminFloat 14s ease-in-out infinite;
 }
 
 .admin-orb-1 {
-  width: 280px;
-  height: 280px;
-  background: radial-gradient(circle, rgba(15, 118, 110, 0.35), rgba(15, 118, 110, 0));
-  top: -80px;
-  left: -60px;
+  width: 340px;
+  height: 340px;
+  background: radial-gradient(circle, rgba(15, 118, 110, 0.3), rgba(15, 118, 110, 0));
+  top: -100px;
+  left: -80px;
 }
 
 .admin-orb-2 {
-  width: 360px;
-  height: 360px;
-  background: radial-gradient(circle, rgba(245, 158, 11, 0.35), rgba(245, 158, 11, 0));
-  top: 120px;
-  right: -120px;
-  animation-delay: 1.5s;
+  width: 420px;
+  height: 420px;
+  background: radial-gradient(circle, rgba(245, 158, 11, 0.28), rgba(245, 158, 11, 0));
+  top: 80px;
+  right: -140px;
+  animation-delay: 2s;
 }
 
 .admin-orb-3 {
-  width: 220px;
-  height: 220px;
-  background: radial-gradient(circle, rgba(14, 165, 233, 0.35), rgba(14, 165, 233, 0));
-  bottom: -40px;
-  left: 18%;
-  animation-delay: 3s;
+  width: 280px;
+  height: 280px;
+  background: radial-gradient(circle, rgba(14, 165, 233, 0.28), rgba(14, 165, 233, 0));
+  bottom: -60px;
+  left: 20%;
+  animation-delay: 4s;
 }
 
 .admin-grid {
   position: absolute;
   inset: -20%;
   background-image:
-    linear-gradient(rgba(11, 31, 36, 0.05) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(11, 31, 36, 0.05) 1px, transparent 1px);
-  background-size: 80px 80px;
-  transform: rotate(2deg);
-  opacity: 0.35;
+    linear-gradient(rgba(11, 31, 36, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(11, 31, 36, 0.04) 1px, transparent 1px);
+  background-size: 72px 72px;
+  transform: rotate(1deg);
+  opacity: 0.4;
 }
 
+/* ================================
+   NAVBAR MODERN GLOW
+================================ */
+.navbar-glow {
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.05),
+    0 8px 32px rgba(2, 44, 34, 0.5),
+    0 0 80px rgba(16, 185, 129, 0.05);
+}
+
+/* ================================
+   METRIC CARDS (ADMIN)
+================================ */
+.metric-card {
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--radius-md);
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+}
+
+.metric-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 24px 48px rgba(0, 0, 0, 0.15);
+}
+
+.metric-card::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: inherit;
+}
+
+/* ================================
+   ANIMATIONS
+================================ */
 @keyframes adminFloat {
-  0%,
-  100% {
-    transform: translateY(0px);
-  }
-  50% {
-    transform: translateY(-18px);
-  }
+  0%, 100% { transform: translateY(0px); }
+  50%       { transform: translateY(-20px); }
 }
 
 @keyframes adminFade {
-  from {
-    opacity: 0;
-    transform: translateY(12px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0px);
-  }
-}
-
-.admin-live-dot {
-  width: 10px;
-  height: 10px;
-  border-radius: 999px;
-  background: #10b981;
-  box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.6);
-  animation: adminPulse 1.6s infinite;
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0px); }
 }
 
 @keyframes adminPulse {
-  0% {
-    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.6);
-  }
-  70% {
-    box-shadow: 0 0 0 10px rgba(16, 185, 129, 0);
-  }
-  100% {
-    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
-  }
+  0%   { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.6); }
+  70%  { box-shadow: 0 0 0 10px rgba(16, 185, 129, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50%       { transform: translateY(-16px); }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideIn {
+  from { opacity: 0; transform: translateX(-16px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes scaleIn {
+  from { opacity: 0; transform: scale(0.95); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+@keyframes shimmer {
+  0%   { background-position: -200% center; }
+  100% { background-position: 200% center; }
+}
+
+@keyframes glow {
+  0%, 100% { opacity: 0.6; }
+  50%       { opacity: 1; }
+}
+
+/* ================================
+   LIVE DOT INDICATOR
+================================ */
+.admin-live-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #10b981;
+  box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.6);
+  animation: adminPulse 1.8s infinite;
+  flex-shrink: 0;
+}
+
+/* ================================
+   ANIMATION UTILITY CLASSES
+================================ */
+.fade-in  { animation: fadeIn  0.5s ease-out both; }
+.slide-in { animation: slideIn 0.4s ease-out both; }
+.scale-in { animation: scaleIn 0.3s ease-out both; }
+
+/* ================================
+   SCROLLBAR STYLING
+================================ */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track  { background: transparent; }
+::-webkit-scrollbar-thumb  { background: rgba(15, 118, 110, 0.3); border-radius: 99px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(15, 118, 110, 0.55); }
+
+/* ================================
+   SHIMMER TEXT (LOGO)
+================================ */
+.shimmer-text {
+  background: linear-gradient(
+    90deg,
+    #ffffff 25%,
+    #d1fae5 50%,
+    #ffffff 75%
+  );
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: shimmer 4s linear infinite;
 }
