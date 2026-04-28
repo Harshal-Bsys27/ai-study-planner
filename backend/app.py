@@ -362,6 +362,166 @@ def create_app():
             db.session.rollback()
             return jsonify({"error": str(e)}), 500
 
+    # ==================== STATS & ANALYTICS ENDPOINTS ====================
+    
+    @app.route("/api/stats/streak", methods=["GET"])
+    @token_required
+    def get_streak(current_user_id):
+        """Get user's study streak"""
+        try:
+            streak = StudyStreak.query.filter_by(user_id=current_user_id).first()
+            if not streak:
+                streak = StudyStreak(user_id=current_user_id, current_streak=0, longest_streak=0)
+                db.session.add(streak)
+                db.session.commit()
+            
+            return jsonify({
+                "current_streak": streak.current_streak,
+                "longest_streak": streak.longest_streak,
+                "last_studied": streak.last_study_date.isoformat() if streak.last_study_date else None
+            }), 200
+        except Exception as e:
+            return jsonify({"error": str(e)}), 500
+
+    @app.route("/api/stats/streak/update", methods=["POST"])
+    @token_required
+    def update_streak(current_user_id):
+        """Update user's study streak"""
+        try:
+            streak = StudyStreak.query.filter_by(user_id=current_user_id).first()
+            if not streak:
+                streak = StudyStreak(user_id=current_user_id, current_streak=1, longest_streak=1)
+            else:
+                streak.current_streak += 1
+                if streak.current_streak > streak.longest_streak:
+                    streak.longest_streak = streak.current_streak
+            
+            streak.last_study_date = datetime.utcnow()
+            db.session.add(streak)
+            db.session.commit()
+            
+            return jsonify({
+                "current_streak": streak.current_streak,
+                "longest_streak": streak.longest_streak
+            }), 200
+        except Exception as e:
+            db.session.rollback()
+            return jsonify({"error": str(e)}), 500
+
+    @app.route("/api/analytics/<int:plan_id>", methods=["GET"])
+    @token_required
+    def get_analytics(current_user_id, plan_id):
+        """Get analytics for a plan"""
+        try:
+            plan = StudyPlan.query.filter_by(id=plan_id, user_id=current_user_id).first()
+            if not plan:
+                return jsonify({"error": "Plan not found"}), 404
+            
+            total_topics = sum(len(d["topics"]) for d in plan.plan_data)
+            completed_topics = UserProgress.query.filter_by(
+                plan_id=plan_id, completed=True
+            ).count()
+            
+            sessions = StudySession.query.filter_by(plan_id=plan_id).all()
+            total_hours = sum(s.duration for s in sessions) / 3600 if sessions else 0
+            
+            return jsonify({
+                "completion_percentage": plan.completion_percentage,
+                "total_sessions": len(sessions),
+                "total_hours": round(total_hours, 2),
+                "topics_completed": completed_topics,
+                "total_topics": total_topics
+            }), 200
+        except Exception as e:
+            return jsonify({"error": str(e)}), 500
+
+    @app.route("/api/pomodoro", methods=["POST"])
+    @token_required
+    def create_pomodoro(current_user_id):
+        """Create a Pomodoro session"""
+        try:
+            data = request.json
+            plan_id = data.get("plan_id")
+            topic = data.get("topic", "Focus Session")
+            
+            plan = StudyPlan.query.filter_by(id=plan_id, user_id=current_user_id).first()
+            if not plan:
+                return jsonify({"error": "Plan not found"}), 404
+            
+            pomodoro = PomodoroSession(plan_id=plan_id, topic=topic)
+            db.session.add(pomodoro)
+            db.session.commit()
+            
+            return jsonify({
+                "id": pomodoro.id,
+                "plan_id": pomodoro.plan_id,
+                "topic": pomodoro.topic
+            }), 201
+        except Exception as e:
+            db.session.rollback()
+            return jsonify({"error": str(e)}), 500
+
+    @app.route("/api/plans/<int:plan_id>/session", methods=["POST"])
+    @token_required
+    def create_study_session(current_user_id, plan_id):
+        """Create a study session"""
+        try:
+            plan = StudyPlan.query.filter_by(id=plan_id, user_id=current_user_id).first()
+            if not plan:
+                return jsonify({"error": "Plan not found"}), 404
+            
+            data = request.json
+            topic = data.get("topic", "Study Session")
+            duration = data.get("duration", 0)
+            
+            session = StudySession(plan_id=plan_id, topic=topic, duration=duration)
+            db.session.add(session)
+            db.session.commit()
+            
+            return jsonify({
+                "id": session.id,
+                "plan_id": session.plan_id,
+                "topic": session.topic,
+                "duration": session.duration
+            }), 201
+        except Exception as e:
+            db.session.rollback()
+            return jsonify({"error": str(e)}), 500
+
+    @app.route("/api/plans/search", methods=["GET"])
+    @token_required
+    def search_plans(current_user_id):
+        """Search user's plans"""
+        try:
+            subject = request.args.get("subject", "").lower()
+            level = request.args.get("level", "").lower()
+            min_days = request.args.get("min_days", 0, type=int)
+            max_days = request.args.get("max_days", 365, type=int)
+            
+            query = StudyPlan.query.filter_by(user_id=current_user_id)
+            
+            results = []
+            for plan in query.all():
+                if subject and subject not in plan.subject.lower():
+                    continue
+                if level and level not in plan.level.lower():
+                    continue
+                if not (min_days <= plan.days <= max_days):
+                    continue
+                
+                results.append({
+                    "id": plan.id,
+                    "subject": plan.subject,
+                    "level": plan.level,
+                    "days": plan.days,
+                    "hours_per_day": plan.hours_per_day,
+                    "completion_percentage": plan.completion_percentage
+                })
+            
+            return jsonify({"plans": results}), 200
+        except Exception as e:
+            return jsonify({"error": str(e)}), 500
+
     # ===============================
     # ADMIN ENDPOINTS
     # ===============================
@@ -519,6 +679,151 @@ def create_app():
         except Exception as e:
             return jsonify({'error': str(e)}), 500
 
+    # ==================== FLASHCARD ENDPOINTS ====================
+    
+    @app.route('/api/flashcards', methods=['POST'])
+    @token_required
+    def create_flashcard(current_user_id):
+        """Create a new flashcard"""
+        try:
+            data = request.json
+            plan_id = data.get('plan_id')
+            question = data.get('question')
+            answer = data.get('answer')
+            topic = data.get('topic')
+            
+            if not all([plan_id, question, answer, topic]):
+                return jsonify({'error': 'Missing required fields'}), 400
+            
+            # Verify user owns the plan
+            plan = StudyPlan.query.filter_by(id=plan_id, user_id=current_user_id).first()
+            if not plan:
+                return jsonify({'error': 'Plan not found'}), 404
+            
+            flashcard = Flashcard(
+                plan_id=plan_id,
+                question=question,
+                answer=answer,
+                topic=topic
+            )
+            db.session.add(flashcard)
+            db.session.commit()
+            
+            return jsonify({
+                'id': flashcard.id,
+                'plan_id': flashcard.plan_id,
+                'question': flashcard.question,
+                'answer': flashcard.answer,
+                'topic': flashcard.topic,
+                'created_at': flashcard.created_at.isoformat()
+            }), 201
+        except Exception as e:
+            db.session.rollback()
+            return jsonify({'error': str(e)}), 500
+    
+    @app.route('/api/flashcards/<int:plan_id>', methods=['GET'])
+    @token_required
+    def get_flashcards(current_user_id, plan_id):
+        """Get all flashcards for a plan"""
+        try:
+            plan = StudyPlan.query.filter_by(id=plan_id, user_id=current_user_id).first()
+            if not plan:
+                return jsonify({'error': 'Plan not found'}), 404
+            
+            flashcards = Flashcard.query.filter_by(plan_id=plan_id).all()
+            return jsonify({
+                'flashcards': [{
+                    'id': f.id,
+                    'plan_id': f.plan_id,
+                    'question': f.question,
+                    'answer': f.answer,
+                    'topic': f.topic,
+                    'created_at': f.created_at.isoformat()
+                } for f in flashcards]
+            }), 200
+        except Exception as e:
+            return jsonify({'error': str(e)}), 500
+    
+    @app.route('/api/flashcards/<int:flashcard_id>', methods=['GET'])
+    @token_required
+    def get_flashcard(current_user_id, flashcard_id):
+        """Get a specific flashcard"""
+        try:
+            flashcard = Flashcard.query.get(flashcard_id)
+            if not flashcard:
+                return jsonify({'error': 'Flashcard not found'}), 404
+            
+            # Verify user owns the plan
+            plan = StudyPlan.query.filter_by(id=flashcard.plan_id, user_id=current_user_id).first()
+            if not plan:
+                return jsonify({'error': 'Unauthorized'}), 403
+            
+            return jsonify({
+                'id': flashcard.id,
+                'plan_id': flashcard.plan_id,
+                'question': flashcard.question,
+                'answer': flashcard.answer,
+                'topic': flashcard.topic,
+                'created_at': flashcard.created_at.isoformat()
+            }), 200
+        except Exception as e:
+            return jsonify({'error': str(e)}), 500
+    
+    @app.route('/api/flashcards/<int:flashcard_id>', methods=['PUT'])
+    @token_required
+    def update_flashcard(current_user_id, flashcard_id):
+        """Update a flashcard"""
+        try:
+            flashcard = Flashcard.query.get(flashcard_id)
+            if not flashcard:
+                return jsonify({'error': 'Flashcard not found'}), 404
+            
+            # Verify user owns the plan
+            plan = StudyPlan.query.filter_by(id=flashcard.plan_id, user_id=current_user_id).first()
+            if not plan:
+                return jsonify({'error': 'Unauthorized'}), 403
+            
+            data = request.json
+            flashcard.question = data.get('question', flashcard.question)
+            flashcard.answer = data.get('answer', flashcard.answer)
+            flashcard.topic = data.get('topic', flashcard.topic)
+            
+            db.session.commit()
+            
+            return jsonify({
+                'id': flashcard.id,
+                'plan_id': flashcard.plan_id,
+                'question': flashcard.question,
+                'answer': flashcard.answer,
+                'topic': flashcard.topic,
+                'created_at': flashcard.created_at.isoformat()
+            }), 200
+        except Exception as e:
+            db.session.rollback()
+            return jsonify({'error': str(e)}), 500
+    
+    @app.route('/api/flashcards/<int:flashcard_id>', methods=['DELETE'])
+    @token_required
+    def delete_flashcard(current_user_id, flashcard_id):
+        """Delete a flashcard"""
+        try:
+            flashcard = Flashcard.query.get(flashcard_id)
+            if not flashcard:
+                return jsonify({'error': 'Flashcard not found'}), 404
+            
+            # Verify user owns the plan
+            plan = StudyPlan.query.filter_by(id=flashcard.plan_id, user_id=current_user_id).first()
+            if not plan:
+                return jsonify({'error': 'Unauthorized'}), 403
+            
+            db.session.delete(flashcard)
+            db.session.commit()
+            
+            return jsonify({'message': 'Flashcard deleted'}), 200
+        except Exception as e:
+            db.session.rollback()
+            return jsonify({'error': str(e)}), 500
+
     return app
 
 
@@ -539,6 +844,32 @@ def ensure_user_columns(app):
         db.session.commit()
 
 
+def ensure_admin_user(app):
+    """Ensure admin user exists with correct password in development mode"""
+    with app.app_context():
+        admin = User.query.filter_by(username='admin').first()
+        
+        if admin:
+            # Update existing admin with correct password
+            admin.set_password('admin123')
+            admin.is_admin = True
+            admin.is_active = True
+            db.session.commit()
+            print("✅ Admin user updated with correct password")
+        else:
+            # Create new admin user
+            admin = User(
+                username='admin',
+                email='admin@example.com',
+                is_admin=True,
+                is_active=True
+            )
+            admin.set_password('admin123')
+            db.session.add(admin)
+            db.session.commit()
+            print("✅ Admin user created")
+
+
 if __name__ == '__main__':
     env = os.getenv('FLASK_ENV', 'development')
     app = create_app()
@@ -547,6 +878,7 @@ if __name__ == '__main__':
         with app.app_context():
             db.create_all()
             ensure_user_columns(app)
+            ensure_admin_user(app)
 
             print("\n" + "="*60)
             print("✅ AI Study Planner Backend Started")
