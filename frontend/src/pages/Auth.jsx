@@ -44,7 +44,7 @@ function Auth({ onLoginSuccess }) {
   };
 
   const validateUsername = (username) => {
-    return username.length >= 3 && /^[a-zA-Z0-9_\-]+$/.test(username);
+    return username.length >= 3 && /^[a-zA-Z0-9_-]+$/.test(username);
   };
 
   const validatePassword = (password) => {
@@ -135,7 +135,7 @@ const res = await fetch(`${API_URL}/api/register`, {
         setTab(0);
         setSuccess('');
       }, 2000);
-    } catch (err) {
+    } catch {
       setError('Network error. Make sure backend is running.');
     } finally {
       setLoading(false);
@@ -179,7 +179,7 @@ const res = await fetch(`${API_URL}/api/register`, {
       
       // Call success callback with user data
       onLoginSuccess(data.user);
-    } catch (err) {
+
       setError('Network error. Make sure backend is running.');
     } finally {
       setLoading(false);
