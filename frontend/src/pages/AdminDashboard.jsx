@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import {
   AppBar,
   Toolbar,
@@ -23,11 +23,14 @@ import {
   Avatar,
   IconButton,
 } from "@mui/material";
+import { ThemeModeContext } from "../theme";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import LogoutIcon from "@mui/icons-material/Logout";
 import DashboardIcon from "@mui/icons-material/Dashboard";
 import RefreshIcon from "@mui/icons-material/Refresh";
 import FileDownloadIcon from "@mui/icons-material/FileDownload";
+import Brightness4Icon from "@mui/icons-material/Brightness4";
+import Brightness7Icon from "@mui/icons-material/Brightness7";
 import {
   BarChart,
   Bar,
@@ -45,6 +48,8 @@ import {
 } from "recharts";
 
 const AdminDashboard = ({ token, onLogout, onBack }) => {
+  const { mode, toggleMode } = useContext(ThemeModeContext);
+  const isDarkMode = mode === "dark";
   const [stats, setStats] = useState(null);
   const [users, setUsers] = useState([]);
   const [loadingStats, setLoadingStats] = useState(false);
@@ -378,6 +383,22 @@ const AdminDashboard = ({ token, onLogout, onBack }) => {
           >
             Back
           </Button>
+          <IconButton
+            onClick={toggleMode}
+            sx={{
+              color: "rgba(255,255,255,0.7)",
+              borderRadius: "10px",
+              padding: "8px",
+              transition: "all 0.3s ease",
+              "&:hover": {
+                background: "rgba(52, 211, 153, 0.12)",
+                color: "#34d399"
+              }
+            }}
+            title={`Switch to ${isDarkMode ? "light" : "dark"} mode`}
+          >
+            {isDarkMode ? <Brightness7Icon sx={{ fontSize: 20 }} /> : <Brightness4Icon sx={{ fontSize: 20 }} />}
+          </IconButton>
           <Button
             onClick={onLogout}
             startIcon={<LogoutIcon sx={{ fontSize: 16 }} />}
@@ -393,7 +414,7 @@ const AdminDashboard = ({ token, onLogout, onBack }) => {
         </Toolbar>
       </AppBar>
 
-      <Container maxWidth="xl" className="admin-content" sx={{ py: 4 }}>
+      <Container maxWidth="xl" className="admin-content" sx={{ py: 4, background: isDarkMode ? "linear-gradient(135deg, rgba(5, 18, 11, 0.95), rgba(8, 25, 16, 0.95))" : "transparent" }}>
         <Box
           sx={{
             display: "flex",
@@ -408,7 +429,7 @@ const AdminDashboard = ({ token, onLogout, onBack }) => {
             <Typography
               variant="overline"
               sx={{
-                color: "var(--admin-muted)",
+                color: isDarkMode ? "#9ca3af" : "var(--admin-muted)",
                 letterSpacing: "0.2em",
                 fontWeight: 600,
               }}
@@ -422,19 +443,21 @@ const AdminDashboard = ({ token, onLogout, onBack }) => {
                 letterSpacing: "-0.025em",
                 mb: 1,
                 fontSize: { xs: "1.75rem", md: "2.2rem" },
-                background: "linear-gradient(135deg, #0b1f24 0%, #0f766e 100%)",
+                background: isDarkMode 
+                  ? "linear-gradient(135deg, #6ee7b7 0%, #34d399 100%)"
+                  : "linear-gradient(135deg, #0b1f24 0%, #0f766e 100%)",
                 WebkitBackgroundClip: "text",
                 WebkitTextFillColor: "transparent",
               }}
             >
               Admin Command Center
             </Typography>
-            <Typography variant="body1" sx={{ color: "var(--admin-muted)", fontSize: "0.95rem" }}>
+            <Typography variant="body1" sx={{ color: isDarkMode ? "#9ca3af" : "var(--admin-muted)", fontSize: "0.95rem" }}>
               Track user growth, learning activity, and system health in real time.
             </Typography>
             <Box sx={{ display: "flex", alignItems: "center", gap: 1, mt: 2 }}>
               <Box className="admin-live-dot" />
-              <Typography variant="caption" sx={{ color: "var(--admin-muted)" }}>
+              <Typography variant="caption" sx={{ color: isDarkMode ? "#9ca3af" : "var(--admin-muted)" }}>
                 Auto-refresh every 30s{lastUpdated ? ` | Last updated ${lastUpdated.toLocaleTimeString()}` : ""}
               </Typography>
             </Box>
@@ -446,13 +469,22 @@ const AdminDashboard = ({ token, onLogout, onBack }) => {
               onClick={() => refreshAll(false)}
               startIcon={<RefreshIcon sx={{ fontSize: 18 }} />}
               sx={{
-                background: "linear-gradient(135deg, #0f766e, #0891b2)",
+                background: isDarkMode 
+                  ? "linear-gradient(135deg, #34d399, #6ee7b7)"
+                  : "linear-gradient(135deg, #0f766e, #0891b2)",
                 color: "#fff",
                 fontWeight: 700,
                 px: 3, borderRadius: "12px",
-                boxShadow: "0 6px 20px rgba(15, 118, 110, 0.3)",
+                boxShadow: isDarkMode
+                  ? "0 6px 20px rgba(52, 211, 153, 0.3)"
+                  : "0 6px 20px rgba(15, 118, 110, 0.3)",
                 transition: "all 0.25s ease",
-                "&:hover": { transform: "translateY(-1px)", boxShadow: "0 8px 28px rgba(15, 118, 110, 0.4)" }
+                "&:hover": { 
+                  transform: "translateY(-1px)", 
+                  boxShadow: isDarkMode
+                    ? "0 8px 28px rgba(52, 211, 153, 0.4)"
+                    : "0 8px 28px rgba(15, 118, 110, 0.4)"
+                }
               }}
             >
               Refresh
@@ -463,10 +495,17 @@ const AdminDashboard = ({ token, onLogout, onBack }) => {
               disabled={exporting}
               startIcon={<FileDownloadIcon sx={{ fontSize: 16 }} />}
               sx={{
-                borderColor: "rgba(15, 118, 110, 0.3)",
-                color: "#0f766e", fontWeight: 700, px: 2.5, borderRadius: "12px",
+                borderColor: isDarkMode ? "rgba(52, 211, 153, 0.3)" : "rgba(15, 118, 110, 0.3)",
+                color: isDarkMode ? "#6ee7b7" : "#0f766e", 
+                fontWeight: 700, 
+                px: 2.5, 
+                borderRadius: "12px",
                 transition: "all 0.2s ease",
-                "&:hover": { borderColor: "#0f766e", background: "rgba(15, 118, 110, 0.05)", transform: "translateY(-1px)" }
+                "&:hover": { 
+                  borderColor: isDarkMode ? "#6ee7b7" : "#0f766e", 
+                  background: isDarkMode ? "rgba(52, 211, 153, 0.1)" : "rgba(15, 118, 110, 0.05)", 
+                  transform: "translateY(-1px)" 
+                }
               }}
             >
               JSON
@@ -477,10 +516,17 @@ const AdminDashboard = ({ token, onLogout, onBack }) => {
               disabled={exporting}
               startIcon={<FileDownloadIcon sx={{ fontSize: 16 }} />}
               sx={{
-                borderColor: "rgba(15, 118, 110, 0.3)",
-                color: "#0f766e", fontWeight: 700, px: 2.5, borderRadius: "12px",
+                borderColor: isDarkMode ? "rgba(52, 211, 153, 0.3)" : "rgba(15, 118, 110, 0.3)",
+                color: isDarkMode ? "#6ee7b7" : "#0f766e", 
+                fontWeight: 700, 
+                px: 2.5, 
+                borderRadius: "12px",
                 transition: "all 0.2s ease",
-                "&:hover": { borderColor: "#0f766e", background: "rgba(15, 118, 110, 0.05)", transform: "translateY(-1px)" }
+                "&:hover": { 
+                  borderColor: isDarkMode ? "#6ee7b7" : "#0f766e", 
+                  background: isDarkMode ? "rgba(52, 211, 153, 0.1)" : "rgba(15, 118, 110, 0.05)", 
+                  transform: "translateY(-1px)" 
+                }
               }}
             >
               CSV
@@ -489,9 +535,14 @@ const AdminDashboard = ({ token, onLogout, onBack }) => {
         </Box>
 
         {error && (
-          <Card sx={{ mb: 2, border: "1px solid #fecaca", background: "#fff" }}>
+          <Card sx={{ 
+            mb: 2, 
+            border: isDarkMode ? "1px solid rgba(239, 68, 68, 0.3)" : "1px solid #fecaca", 
+            background: isDarkMode ? "rgba(127, 29, 29, 0.2)" : "#fff",
+            borderRadius: 2
+          }}>
             <CardContent>
-              <Typography color="error">{error}</Typography>
+              <Typography color={isDarkMode ? "#fca5a5" : "error"}>{error}</Typography>
             </CardContent>
           </Card>
         )}
@@ -503,17 +554,30 @@ const AdminDashboard = ({ token, onLogout, onBack }) => {
                 className="metric-card"
                 sx={{
                   borderRadius: "16px",
-                  background: "rgba(255,255,255,0.96)",
-                  border: "1px solid rgba(15, 23, 42, 0.06)",
-                  boxShadow: "0 4px 20px rgba(15, 23, 42, 0.06)",
+                  background: isDarkMode 
+                    ? "linear-gradient(135deg, rgba(20, 35, 30, 0.8), rgba(15, 50, 40, 0.8))"
+                    : "rgba(255,255,255,0.96)",
+                  border: isDarkMode 
+                    ? "1px solid rgba(34, 197, 94, 0.2)"
+                    : "1px solid rgba(15, 23, 42, 0.06)",
+                  boxShadow: isDarkMode 
+                    ? "0 4px 20px rgba(34, 197, 94, 0.1)"
+                    : "0 4px 20px rgba(15, 23, 42, 0.06)",
                   position: "relative",
                   overflow: "hidden",
+                  transition: "all 0.3s ease",
+                  "&:hover": {
+                    transform: "translateY(-4px)",
+                    boxShadow: isDarkMode 
+                      ? "0 8px 32px rgba(34, 197, 94, 0.15)"
+                      : "0 8px 32px rgba(15, 23, 42, 0.12)"
+                  }
                 }}
               >
                 <Box sx={{ position: "absolute", top: 0, left: 0, right: 0, height: 3, background: `linear-gradient(90deg, ${metric.accent}, ${metric.accent}80)` }} />
                 <CardContent sx={{ p: 2.5 }}>
                   <Typography
-                    sx={{ color: "#64748b", fontWeight: 700, fontSize: "0.72rem", letterSpacing: "0.1em", textTransform: "uppercase" }}
+                    sx={{ color: isDarkMode ? "#9ca3af" : "#64748b", fontWeight: 700, fontSize: "0.72rem", letterSpacing: "0.1em", textTransform: "uppercase" }}
                   >
                     {metric.label}
                   </Typography>
@@ -524,12 +588,12 @@ const AdminDashboard = ({ token, onLogout, onBack }) => {
                       mt: 1,
                       fontSize: "1.8rem",
                       fontFamily: '"JetBrains Mono", monospace',
-                      color: "#0b1f24",
+                      color: isDarkMode ? "#34d399" : "#0b1f24",
                     }}
                   >
                     {loadingStats ? <CircularProgress size={22} sx={{ color: metric.accent }} /> : metric.value}
                   </Typography>
-                  <Typography variant="body2" sx={{ color: "#94a3b8", mt: 1, fontWeight: 500, fontSize: "0.82rem" }}>
+                  <Typography variant="body2" sx={{ color: isDarkMode ? "#6b7280" : "#94a3b8", mt: 1, fontWeight: 500, fontSize: "0.82rem" }}>
                     {metric.caption}
                   </Typography>
                 </CardContent>
@@ -543,24 +607,38 @@ const AdminDashboard = ({ token, onLogout, onBack }) => {
             <Card
               sx={{
                 borderRadius: 3,
-                background: "rgba(255,255,255,0.94)",
-                border: "1px solid rgba(15, 23, 42, 0.08)",
-                boxShadow: "var(--admin-shadow)",
+                background: isDarkMode 
+                  ? "linear-gradient(135deg, rgba(20, 35, 30, 0.8), rgba(15, 50, 40, 0.8))"
+                  : "rgba(255,255,255,0.94)",
+                border: isDarkMode 
+                  ? "1px solid rgba(34, 197, 94, 0.2)"
+                  : "1px solid rgba(15, 23, 42, 0.08)",
+                boxShadow: isDarkMode 
+                  ? "0 4px 20px rgba(34, 197, 94, 0.1)"
+                  : "var(--admin-shadow)",
               }}
             >
               <CardContent>
                 <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 2 }}>
-                  <Typography variant="h6" sx={{ fontWeight: 700 }}>
+                  <Typography variant="h6" sx={{ fontWeight: 700, color: isDarkMode ? "#e2e8f0" : "#000" }}>
                     Activity Mix
                   </Typography>
-                  <Chip label="Live" size="small" sx={{ background: "#e0f2f1", color: "#0f766e" }} />
+                  <Chip label="Live" size="small" sx={{ background: isDarkMode ? "#065f46" : "#e0f2f1", color: isDarkMode ? "#6ee7b7" : "#0f766e" }} />
                 </Box>
                 <Box sx={{ height: 260 }}>
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={activityData} margin={{ top: 10, right: 20, left: 10, bottom: 10 }}>
-                      <XAxis dataKey="name" tick={{ fill: "#475569", fontSize: 12 }} />
-                      <YAxis tick={{ fill: "#475569", fontSize: 12 }} />
-                      <Tooltip cursor={{ fill: "rgba(15, 118, 110, 0.08)" }} />
+                      <XAxis dataKey="name" tick={{ fill: isDarkMode ? "#9ca3af" : "#475569", fontSize: 12 }} />
+                      <YAxis tick={{ fill: isDarkMode ? "#9ca3af" : "#475569", fontSize: 12 }} />
+                      <CartesianGrid strokeDasharray="3 3" stroke={isDarkMode ? "#374151" : "#e2e8f0"} />
+                      <Tooltip cursor={{ fill: isDarkMode ? "rgba(34, 197, 94, 0.1)" : "rgba(15, 118, 110, 0.08)" }} 
+                        contentStyle={{
+                          background: isDarkMode ? "#1f2937" : "#fff",
+                          border: isDarkMode ? "1px solid #4b5563" : "1px solid #e2e8f0",
+                          borderRadius: "8px",
+                          color: isDarkMode ? "#e2e8f0" : "#000"
+                        }}
+                      />
                       <Bar dataKey="value" fill="#0f766e" radius={[8, 8, 0, 0]} />
                     </BarChart>
                   </ResponsiveContainer>
@@ -572,30 +650,43 @@ const AdminDashboard = ({ token, onLogout, onBack }) => {
             <Card
               sx={{
                 borderRadius: 3,
-                background: "rgba(255,255,255,0.94)",
-                border: "1px solid rgba(15, 23, 42, 0.08)",
-                boxShadow: "var(--admin-shadow)",
+                background: isDarkMode 
+                  ? "linear-gradient(135deg, rgba(20, 35, 30, 0.8), rgba(15, 50, 40, 0.8))"
+                  : "rgba(255,255,255,0.94)",
+                border: isDarkMode 
+                  ? "1px solid rgba(34, 197, 94, 0.2)"
+                  : "1px solid rgba(15, 23, 42, 0.08)",
+                boxShadow: isDarkMode 
+                  ? "0 4px 20px rgba(34, 197, 94, 0.1)"
+                  : "var(--admin-shadow)",
               }}
             >
               <CardContent>
                 <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 2 }}>
-                  <Typography variant="h6" sx={{ fontWeight: 700 }}>
+                  <Typography variant="h6" sx={{ fontWeight: 700, color: isDarkMode ? "#e2e8f0" : "#000" }}>
                     User Growth (7 days)
                   </Typography>
-                  <Chip label="Realtime" size="small" sx={{ background: "#fef3c7", color: "#92400e" }} />
+                  <Chip label="Realtime" size="small" sx={{ background: isDarkMode ? "#78350f" : "#fef3c7", color: isDarkMode ? "#fbbf24" : "#92400e" }} />
                 </Box>
                 {growthData.length === 0 ? (
-                  <Typography variant="body2" color="textSecondary">
+                  <Typography variant="body2" color={isDarkMode ? "#9ca3af" : "textSecondary"}>
                     Not enough data to show growth yet.
                   </Typography>
                 ) : (
                   <Box sx={{ height: 260 }}>
                     <ResponsiveContainer width="100%" height="100%">
                       <LineChart data={growthData} margin={{ top: 10, right: 20, left: 10, bottom: 10 }}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="rgba(148, 163, 184, 0.4)" />
-                        <XAxis dataKey="name" tick={{ fill: "#475569", fontSize: 12 }} />
-                        <YAxis tick={{ fill: "#475569", fontSize: 12 }} allowDecimals={false} />
-                        <Tooltip />
+                        <CartesianGrid strokeDasharray="3 3" stroke={isDarkMode ? "#374151" : "rgba(148, 163, 184, 0.4)"} />
+                        <XAxis dataKey="name" tick={{ fill: isDarkMode ? "#9ca3af" : "#475569", fontSize: 12 }} />
+                        <YAxis tick={{ fill: isDarkMode ? "#9ca3af" : "#475569", fontSize: 12 }} allowDecimals={false} />
+                        <Tooltip 
+                          contentStyle={{
+                            background: isDarkMode ? "#1f2937" : "#fff",
+                            border: isDarkMode ? "1px solid #4b5563" : "1px solid #e2e8f0",
+                            borderRadius: "8px",
+                            color: isDarkMode ? "#e2e8f0" : "#000"
+                          }}
+                        />
                         <Line type="monotone" dataKey="users" stroke="#0ea5e9" strokeWidth={3} dot={{ r: 3 }} />
                       </LineChart>
                     </ResponsiveContainer>
@@ -608,13 +699,19 @@ const AdminDashboard = ({ token, onLogout, onBack }) => {
             <Card
               sx={{
                 borderRadius: 3,
-                background: "rgba(255,255,255,0.94)",
-                border: "1px solid rgba(15, 23, 42, 0.08)",
-                boxShadow: "var(--admin-shadow)",
+                background: isDarkMode 
+                  ? "linear-gradient(135deg, rgba(20, 35, 30, 0.8), rgba(15, 50, 40, 0.8))"
+                  : "rgba(255,255,255,0.94)",
+                border: isDarkMode 
+                  ? "1px solid rgba(34, 197, 94, 0.2)"
+                  : "1px solid rgba(15, 23, 42, 0.08)",
+                boxShadow: isDarkMode 
+                  ? "0 4px 20px rgba(34, 197, 94, 0.1)"
+                  : "var(--admin-shadow)",
               }}
             >
               <CardContent>
-                <Typography variant="h6" sx={{ fontWeight: 700, mb: 2 }}>
+                <Typography variant="h6" sx={{ fontWeight: 700, mb: 2, color: isDarkMode ? "#e2e8f0" : "#000" }}>
                   User Health
                 </Typography>
                 <Box sx={{ display: "flex", flexDirection: { xs: "column", sm: "row" }, gap: 2 }}>
@@ -633,35 +730,42 @@ const AdminDashboard = ({ token, onLogout, onBack }) => {
                             <Cell key={entry.name} fill={entry.color} />
                           ))}
                         </Pie>
-                        <Tooltip />
-                        <Legend />
+                        <Tooltip 
+                          contentStyle={{
+                            background: isDarkMode ? "#1f2937" : "#fff",
+                            border: isDarkMode ? "1px solid #4b5563" : "1px solid #e2e8f0",
+                            borderRadius: "8px",
+                            color: isDarkMode ? "#e2e8f0" : "#000"
+                          }}
+                        />
+                        <Legend wrapperStyle={{ color: isDarkMode ? "#d1d5db" : "#000" }} />
                       </PieChart>
                     </ResponsiveContainer>
                   </Box>
                   <Box sx={{ flex: 1 }}>
                     <Stack spacing={1.5}>
                       <Box>
-                        <Typography variant="subtitle2" sx={{ color: "var(--admin-muted)", fontWeight: 600 }}>
+                        <Typography variant="subtitle2" sx={{ color: isDarkMode ? "#9ca3af" : "var(--admin-muted)", fontWeight: 600 }}>
                           Admins
                         </Typography>
-                        <Typography variant="h5" sx={{ fontFamily: "var(--admin-font-mono)", fontWeight: 700 }}>
+                        <Typography variant="h5" sx={{ fontFamily: "var(--admin-font-mono)", fontWeight: 700, color: isDarkMode ? "#34d399" : "#000" }}>
                           {roleData[0].value}
                         </Typography>
                       </Box>
                       <Box>
-                        <Typography variant="subtitle2" sx={{ color: "var(--admin-muted)", fontWeight: 600 }}>
+                        <Typography variant="subtitle2" sx={{ color: isDarkMode ? "#9ca3af" : "var(--admin-muted)", fontWeight: 600 }}>
                           Members
                         </Typography>
-                        <Typography variant="h5" sx={{ fontFamily: "var(--admin-font-mono)", fontWeight: 700 }}>
+                        <Typography variant="h5" sx={{ fontFamily: "var(--admin-font-mono)", fontWeight: 700, color: isDarkMode ? "#34d399" : "#000" }}>
                           {roleData[1].value}
                         </Typography>
                       </Box>
-                      <Divider />
+                      <Divider sx={{ borderColor: isDarkMode ? "#374151" : "rgba(15, 23, 42, 0.08)" }} />
                       <Box>
-                        <Typography variant="subtitle2" sx={{ color: "var(--admin-muted)", fontWeight: 600 }}>
+                        <Typography variant="subtitle2" sx={{ color: isDarkMode ? "#9ca3af" : "var(--admin-muted)", fontWeight: 600 }}>
                           Total Hours Logged
                         </Typography>
-                        <Typography variant="h5" sx={{ fontFamily: "var(--admin-font-mono)", fontWeight: 700 }}>
+                        <Typography variant="h5" sx={{ fontFamily: "var(--admin-font-mono)", fontWeight: 700, color: isDarkMode ? "#34d399" : "#000" }}>
                           {safeStats.total_hours}
                         </Typography>
                       </Box>
@@ -675,13 +779,19 @@ const AdminDashboard = ({ token, onLogout, onBack }) => {
             <Card
               sx={{
                 borderRadius: 3,
-                background: "rgba(255,255,255,0.94)",
-                border: "1px solid rgba(15, 23, 42, 0.08)",
-                boxShadow: "var(--admin-shadow)",
+                background: isDarkMode 
+                  ? "linear-gradient(135deg, rgba(20, 35, 30, 0.8), rgba(15, 50, 40, 0.8))"
+                  : "rgba(255,255,255,0.94)",
+                border: isDarkMode 
+                  ? "1px solid rgba(34, 197, 94, 0.2)"
+                  : "1px solid rgba(15, 23, 42, 0.08)",
+                boxShadow: isDarkMode 
+                  ? "0 4px 20px rgba(34, 197, 94, 0.1)"
+                  : "var(--admin-shadow)",
               }}
             >
               <CardContent>
-                <Typography variant="h6" sx={{ fontWeight: 700, mb: 2 }}>
+                <Typography variant="h6" sx={{ fontWeight: 700, mb: 2, color: isDarkMode ? "#e2e8f0" : "#000" }}>
                   Engagement per User
                 </Typography>
                 <Box sx={{ height: 260 }}>
@@ -691,9 +801,17 @@ const AdminDashboard = ({ token, onLogout, onBack }) => {
                       layout="vertical"
                       margin={{ top: 10, right: 20, left: 20, bottom: 10 }}
                     >
-                      <XAxis type="number" tick={{ fill: "#475569", fontSize: 12 }} />
-                      <YAxis dataKey="name" type="category" tick={{ fill: "#475569", fontSize: 12 }} />
-                      <Tooltip />
+                      <XAxis type="number" tick={{ fill: isDarkMode ? "#9ca3af" : "#475569", fontSize: 12 }} />
+                      <YAxis dataKey="name" type="category" tick={{ fill: isDarkMode ? "#9ca3af" : "#475569", fontSize: 12 }} />
+                      <CartesianGrid strokeDasharray="3 3" stroke={isDarkMode ? "#374151" : "#e2e8f0"} />
+                      <Tooltip 
+                        contentStyle={{
+                          background: isDarkMode ? "#1f2937" : "#fff",
+                          border: isDarkMode ? "1px solid #4b5563" : "1px solid #e2e8f0",
+                          borderRadius: "8px",
+                          color: isDarkMode ? "#e2e8f0" : "#000"
+                        }}
+                      />
                       <Bar dataKey="value" fill="#0ea5e9" radius={[6, 6, 6, 6]} />
                     </BarChart>
                   </ResponsiveContainer>
@@ -706,20 +824,26 @@ const AdminDashboard = ({ token, onLogout, onBack }) => {
         <Card
           sx={{
             borderRadius: 3,
-            background: "rgba(255,255,255,0.96)",
-            border: "1px solid rgba(15, 23, 42, 0.08)",
-            boxShadow: "var(--admin-shadow)",
+            background: isDarkMode 
+              ? "linear-gradient(135deg, rgba(20, 35, 30, 0.8), rgba(15, 50, 40, 0.8))"
+              : "rgba(255,255,255,0.96)",
+            border: isDarkMode 
+              ? "1px solid rgba(34, 197, 94, 0.2)"
+              : "1px solid rgba(15, 23, 42, 0.08)",
+            boxShadow: isDarkMode 
+              ? "0 4px 20px rgba(34, 197, 94, 0.1)"
+              : "var(--admin-shadow)",
           }}
         >
           <CardContent>
             <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 2 }}>
-              <Typography variant="h6" sx={{ fontWeight: 700 }}>
+              <Typography variant="h6" sx={{ fontWeight: 700, color: isDarkMode ? "#e2e8f0" : "#000" }}>
                 Registered Users
               </Typography>
               <Chip
                 label={`${users.length} users`}
                 size="small"
-                sx={{ background: "#e2e8f0", color: "#0b1f24" }}
+                sx={{ background: isDarkMode ? "#1e293b" : "#e2e8f0", color: isDarkMode ? "#cbd5e1" : "#0b1f24" }}
               />
             </Box>
 
@@ -732,15 +856,15 @@ const AdminDashboard = ({ token, onLogout, onBack }) => {
                 component={Paper}
                 elevation={0}
                 sx={{
-                  background: "transparent",
+                  background: isDarkMode ? "rgba(10, 20, 15, 0.5)" : "transparent",
                   maxHeight: 520,
                   borderRadius: 2,
-                  border: "1px solid rgba(15, 23, 42, 0.08)",
+                  border: isDarkMode ? "1px solid rgba(34, 197, 94, 0.2)" : "1px solid rgba(15, 23, 42, 0.08)",
                 }}
               >
                 <Table size="small" stickyHeader sx={{ minWidth: 920 }}>
                   <TableHead>
-                    <TableRow sx={{ background: "rgba(15, 23, 42, 0.04)" }}>
+                    <TableRow sx={{ background: isDarkMode ? "rgba(20, 35, 30, 0.6)" : "rgba(15, 23, 42, 0.04)" }}>
                       {[
                         "ID",
                         "Username",
@@ -761,9 +885,9 @@ const AdminDashboard = ({ token, onLogout, onBack }) => {
                             fontSize: 11,
                             textTransform: "uppercase",
                             letterSpacing: "0.1em",
-                            color: "#64748b",
+                            color: isDarkMode ? "#9ca3af" : "#64748b",
                             fontWeight: 600,
-                            borderBottom: "1px solid rgba(15, 23, 42, 0.08)",
+                            borderBottom: isDarkMode ? "1px solid rgba(34, 197, 94, 0.1)" : "1px solid rgba(15, 23, 42, 0.08)",
                           }}
                         >
                           {label}
@@ -776,32 +900,34 @@ const AdminDashboard = ({ token, onLogout, onBack }) => {
                       <TableRow
                         key={user.id}
                         sx={{
-                          "&:hover": { background: "rgba(14, 165, 233, 0.06)" },
+                          background: isDarkMode ? "rgba(10, 20, 15, 0.3)" : "transparent",
+                          borderBottom: isDarkMode ? "1px solid rgba(34, 197, 94, 0.1)" : "1px solid rgba(15, 23, 42, 0.04)",
+                          "&:hover": { background: isDarkMode ? "rgba(34, 197, 94, 0.08)" : "rgba(14, 165, 233, 0.06)" },
                         }}
                       >
-                        <TableCell>{user.id}</TableCell>
-                        <TableCell>{user.username}</TableCell>
-                        <TableCell>{user.email}</TableCell>
+                        <TableCell sx={{ color: isDarkMode ? "#d1d5db" : "#000" }}>{user.id}</TableCell>
+                        <TableCell sx={{ color: isDarkMode ? "#d1d5db" : "#000" }}>{user.username}</TableCell>
+                        <TableCell sx={{ color: isDarkMode ? "#d1d5db" : "#000", fontSize: "0.85rem" }}>{user.email}</TableCell>
                         <TableCell>
                           {user.is_admin ? (
-                            <Chip label="Admin" size="small" sx={{ background: "#fef3c7", color: "#92400e" }} />
+                            <Chip label="Admin" size="small" sx={{ background: isDarkMode ? "#78350f" : "#fef3c7", color: isDarkMode ? "#fbbf24" : "#92400e" }} />
                           ) : (
-                            "-"
+                            <Typography sx={{ color: isDarkMode ? "#9ca3af" : "#000" }}>-</Typography>
                           )}
                         </TableCell>
                         <TableCell>
                           {user.is_active ? (
-                            <Chip label="Active" size="small" sx={{ background: "#dcfce7", color: "#166534" }} />
+                            <Chip label="Active" size="small" sx={{ background: isDarkMode ? "#065f46" : "#dcfce7", color: isDarkMode ? "#6ee7b7" : "#166534" }} />
                           ) : (
-                            <Chip label="Disabled" size="small" sx={{ background: "#e2e8f0", color: "#475569" }} />
+                            <Chip label="Disabled" size="small" sx={{ background: isDarkMode ? "#374151" : "#e2e8f0", color: isDarkMode ? "#d1d5db" : "#475569" }} />
                           )}
                         </TableCell>
-                        <TableCell>{user.plans_count || 0}</TableCell>
-                        <TableCell>{user.flashcards_count || 0}</TableCell>
-                        <TableCell>{user.sessions_count || 0}</TableCell>
-                        <TableCell>{user.total_hours || 0}</TableCell>
-                        <TableCell>{user.current_streak || 0}</TableCell>
-                        <TableCell>{user.longest_streak || 0}</TableCell>
+                        <TableCell sx={{ color: isDarkMode ? "#d1d5db" : "#000" }}>{user.plans_count || 0}</TableCell>
+                        <TableCell sx={{ color: isDarkMode ? "#d1d5db" : "#000" }}>{user.flashcards_count || 0}</TableCell>
+                        <TableCell sx={{ color: isDarkMode ? "#d1d5db" : "#000" }}>{user.sessions_count || 0}</TableCell>
+                        <TableCell sx={{ color: isDarkMode ? "#d1d5db" : "#000" }}>{user.total_hours || 0}</TableCell>
+                        <TableCell sx={{ color: isDarkMode ? "#d1d5db" : "#000" }}>{user.current_streak || 0}</TableCell>
+                        <TableCell sx={{ color: isDarkMode ? "#d1d5db" : "#000" }}>{user.longest_streak || 0}</TableCell>
                         <TableCell>
                           <Stack direction="row" spacing={1}>
                             <Button
@@ -809,17 +935,32 @@ const AdminDashboard = ({ token, onLogout, onBack }) => {
                               variant="outlined"
                               onClick={() => handleToggleActive(user)}
                               disabled={busyUserId === user.id}
-                              sx={{ textTransform: "none" }}
+                              sx={{ 
+                                textTransform: "none",
+                                borderColor: isDarkMode ? "#6b7280" : "rgba(0,0,0,0.2)",
+                                color: isDarkMode ? "#d1d5db" : "#000",
+                                "&:hover": {
+                                  borderColor: isDarkMode ? "#9ca3af" : "rgba(0,0,0,0.4)",
+                                  background: isDarkMode ? "rgba(107, 114, 128, 0.1)" : "rgba(0,0,0,0.05)"
+                                }
+                              }}
                             >
                               {user.is_active ? "Disable" : "Enable"}
                             </Button>
                             <Button
                               size="small"
                               variant="outlined"
-                              color="error"
                               onClick={() => handleDeleteUser(user)}
                               disabled={busyUserId === user.id}
-                              sx={{ textTransform: "none" }}
+                              sx={{ 
+                                textTransform: "none",
+                                borderColor: isDarkMode ? "#dc2626" : "#dc2626",
+                                color: isDarkMode ? "#fca5a5" : "#dc2626",
+                                "&:hover": {
+                                  borderColor: isDarkMode ? "#fca5a5" : "#dc2626",
+                                  background: isDarkMode ? "rgba(220, 38, 38, 0.1)" : "rgba(220, 38, 38, 0.05)"
+                                }
+                              }}
                             >
                               Delete
                             </Button>
