@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useContext } from "react";
 import {
   Card,
   CardContent,
@@ -8,9 +8,12 @@ import {
   LinearProgress,
 } from "@mui/material";
 import LocalFireDepartmentIcon from "@mui/icons-material/LocalFireDepartment";
+import { ThemeModeContext } from "../theme";
 
 const StreakTracker = ({ streak, onUpdateStreak }) => {
   const [loading, setLoading] = useState(false);
+  const { mode } = useContext(ThemeModeContext);
+  const isDarkMode = mode === "dark";
 
   const handleUpdateStreak = async () => {
     setLoading(true);
@@ -27,10 +30,14 @@ const StreakTracker = ({ streak, onUpdateStreak }) => {
           height: '100%',
           display: 'flex',
           flexDirection: 'column',
-          background: "linear-gradient(135deg, #FF6B6B 0%, #FF8E8E 100%)",
+          background: isDarkMode 
+            ? "linear-gradient(135deg, #991b1b 0%, #7f1d1d 100%)" 
+            : "linear-gradient(135deg, #FF6B6B 0%, #FF8E8E 100%)",
           color: "white",
           borderRadius: 3,
-          boxShadow: "0 4px 12px rgba(0,0,0,0.05)",
+          boxShadow: isDarkMode 
+            ? "0 4px 12px rgba(239, 68, 68, 0.2)" 
+            : "0 4px 12px rgba(0,0,0,0.05)",
         }}
       >
         <CardContent sx={{ textAlign: "center", flexGrow: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
@@ -48,10 +55,14 @@ const StreakTracker = ({ streak, onUpdateStreak }) => {
         height: '100%',
         display: 'flex',
         flexDirection: 'column',
-        background: "linear-gradient(135deg, #FF6B6B 0%, #FF8E8E 100%)",
+        background: isDarkMode 
+          ? "linear-gradient(135deg, #991b1b 0%, #7f1d1d 100%)" 
+          : "linear-gradient(135deg, #FF6B6B 0%, #FF8E8E 100%)",
         color: "white",
         borderRadius: 3,
-        boxShadow: "0 4px 12px rgba(0,0,0,0.05)",
+        boxShadow: isDarkMode 
+          ? "0 4px 12px rgba(239, 68, 68, 0.2)" 
+          : "0 4px 12px rgba(0,0,0,0.05)",
       }}
     >
       <CardContent sx={{ textAlign: "center", flexGrow: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
