@@ -25,6 +25,92 @@ const ExportPlan = ({ plan, analytics, onExport }) => {
   const [exportFormat, setExportFormat] = useState("json");
   const [isExporting, setIsExporting] = useState(false);
 
+  const escapeHtml = (value) =>
+    String(value ?? "")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#39;");
+
+  const buildPrintHtml = (data) => {
+    const planData = data.plan || {};
+    const analyticsData = data.analytics || {};
+
+    const summaryRows = [
+      ["Subject", planData.subject],
+      ["Level", planData.level],
+      ["Days", planData.days],
+      ["Hours per day", planData.hours_per_day],
+      ["Total hours", planData.total_hours],
+      ["Completion", `${planData.completion_percentage ?? 0}%`],
+      ["Created", planData.created_at],
+    ];
+
+    const analyticsRows = [
+      ["Completion", `${analyticsData.completion_percentage ?? planData.completion_percentage ?? "n/a"}%`],
+      ["Total sessions", analyticsData.total_sessions ?? "n/a"],
+      ["Total hours", analyticsData.total_hours ?? "n/a"],
+    ];
+
+    return `<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Study Plan Export</title>
+    <style>
+      body { font-family: Arial, sans-serif; margin: 32px; color: #0f172a; }
+      h1 { margin: 0 0 8px; font-size: 22px; }
+      h2 { margin: 24px 0 8px; font-size: 16px; color: #0f766e; }
+      table { width: 100%; border-collapse: collapse; margin-top: 8px; }
+      th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid #e2e8f0; }
+      th { background: #f8fafc; font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; }
+      .note { margin-top: 12px; font-size: 12px; color: #64748b; }
+    </style>
+  </head>
+  <body>
+    <h1>${escapeHtml(planData.subject || "Study Plan")}</h1>
+    <div class="note">Exported on ${escapeHtml(new Date().toLocaleString())}</div>
+
+    <h2>Plan Summary</h2>
+    <table>
+      <thead>
+        <tr><th>Field</th><th>Value</th></tr>
+      </thead>
+      <tbody>
+        ${summaryRows.map(([label, value]) => `<tr><td>${escapeHtml(label)}</td><td>${escapeHtml(value)}</td></tr>`).join("")}
+      </tbody>
+    </table>
+
+    <h2>Analytics</h2>
+    <table>
+      <thead>
+        <tr><th>Metric</th><th>Value</th></tr>
+      </thead>
+      <tbody>
+        ${analyticsRows.map(([label, value]) => `<tr><td>${escapeHtml(label)}</td><td>${escapeHtml(value)}</td></tr>`).join("")}
+      </tbody>
+    </table>
+  </body>
+</html>`;
+  };
+
+  const printPdf = (data) => {
+    const html = buildPrintHtml(data);
+    const win = window.open("", "_blank", "noopener,noreferrer");
+    if (!win) {
+      console.error("Popup blocked. Allow popups to print the PDF.");
+      return;
+    }
+
+    win.document.open();
+    win.document.write(html);
+    win.document.close();
+    win.focus();
+    win.print();
+    win.close();
+  };
+
   const downloadFile = (data, filename, format) => {
     let content, type;
 
@@ -52,6 +138,9 @@ const ExportPlan = ({ plan, analytics, onExport }) => {
       content = [headers, ...rows].map((row) => row.join(",")).join("\n");
       type = "text/csv";
       filename = `${plan.subject}_plan.csv`;
+    } else if (format === "pdf") {
+      printPdf(data);
+      return;
     }
 
     const blob = new Blob([content], { type });
@@ -146,11 +235,16 @@ const ExportPlan = ({ plan, analytics, onExport }) => {
                     📊 CSV (Spreadsheet)
                   </Box>
                 </MenuItem>
+                <MenuItem value="pdf">
+                  <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                    🖨️ PDF (Print)
+                  </Box>
+                </MenuItem>
               </Select>
             </FormControl>
 
             <Typography variant="caption" color="textSecondary">
-              💡 Tip: JSON format preserves all data. CSV is great for spreadsheets!
+              💡 Tip: JSON preserves full data. CSV is great for spreadsheets. PDF opens print view.
             </Typography>
           </Stack>
         </DialogContent>
@@ -162,7 +256,13 @@ const ExportPlan = ({ plan, analytics, onExport }) => {
             onClick={handleExport}
             variant="contained"
             disabled={isExporting}
-            startIcon={exportFormat === "json" ? <FileDownloadIcon /> : <TableChartIcon />}
+            startIcon={
+              exportFormat === "csv"
+                ? <TableChartIcon />
+                : exportFormat === "pdf"
+                  ? <PictureAsPdfIcon />
+                  : <FileDownloadIcon />
+            }
           >
             {isExporting ? "Exporting..." : "Download"}
           </Button>
