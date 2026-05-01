@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useContext, useRef, useCallback } from "react";
 import { Routes, Route, Navigate, useNavigate } from "react-router-dom";
 import {
   AppBar,
@@ -68,6 +68,8 @@ import MenuIcon from "@mui/icons-material/Menu";
 import DashboardIcon from "@mui/icons-material/Dashboard";
 import HistoryIcon from "@mui/icons-material/History";
 import LogoutIcon from "@mui/icons-material/Logout";
+import DarkModeIcon from "@mui/icons-material/DarkMode";
+import LightModeIcon from "@mui/icons-material/LightMode";
 
 import Auth from "./pages/Auth";
 import AdminDashboard from "./pages/AdminDashboard";
@@ -77,6 +79,7 @@ import ProgressChart from "./components/ProgressChart";
 import StreakTracker from "./components/StreakTracker";
 import FlashcardWidget from "./components/FlashcardWidget";
 import ExportPlan from "./components/ExportPlan";
+import { ThemeModeContext } from "./theme";
 
 const API_URL = import.meta.env.VITE_API_URL;
 
@@ -288,8 +291,6 @@ function App() {
     Advanced: ""
   });
   const [customSubjects, setCustomSubjects] = useState({});
-  const [timerActive, setTimerActive] = useState(false);
-  const [timerSeconds, setTimerSeconds] = useState(0);
   const [studyHistory, setStudyHistory] = useState([]);
   const [showHistory, setShowHistory] = useState(false);
   
@@ -303,11 +304,21 @@ function App() {
   const [anchorEl, setAnchorEl] = useState(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [notifications, setNotifications] = useState([]);
+  const [notificationAnchorEl, setNotificationAnchorEl] = useState(null);
+  const notificationIdRef = useRef(0);
 
   const navigate = useNavigate();
+  const { mode, toggleMode } = useContext(ThemeModeContext);
+  const isDarkMode = mode === "dark";
+
+  // Get token from localStorage
+  const getToken = () => {
+    return localStorage.getItem('token');
+  };
 
   // Fetch Streak
-  const fetchStreak = async () => {
+  const fetchStreak = useCallback(async () => {
     if (!isAuthenticated) return;
     try {
       const res = await fetch(`http://localhost:5000/api/stats/streak`, {
@@ -319,7 +330,7 @@ function App() {
     } catch (e) {
       console.error(e);
     }
-  };
+  }, [isAuthenticated]);
 
   const updateStreak = async () => {
     try {
@@ -340,7 +351,7 @@ function App() {
   };
 
   // Fetch Flashcards
-  const fetchFlashcards = async (planId) => {
+  const fetchFlashcards = useCallback(async (planId) => {
     if (!planId) {
       console.warn('⚠️ No plan ID provided to fetchFlashcards');
       return;
@@ -362,10 +373,10 @@ function App() {
       console.error('❌ Error fetching flashcards:', e);
       setFlashcards([]);
     }
-  };
+  }, []);
 
   // Fetch Analytics
-  const fetchAnalytics = async (planId) => {
+  const fetchAnalytics = useCallback(async (planId) => {
     if (!planId) return;
     try {
       const res = await fetch(`http://localhost:5000/api/analytics/${planId}`, {
@@ -379,7 +390,7 @@ function App() {
     } catch (e) {
       console.error(e);
     }
-  };
+  }, []);
 
   const handleSearchPlans = async (filters) => {
     setSearchLoading(true);
@@ -540,7 +551,7 @@ function App() {
 
   useEffect(() => {
     if (isAuthenticated) fetchStreak();
-  }, [isAuthenticated]);
+  }, [isAuthenticated, fetchStreak]);
 
   useEffect(() => {
     if (currentPlanId) {
@@ -550,7 +561,7 @@ function App() {
       setFlashcards([]);
       setPlanAnalytics(null);
     }
-  }, [currentPlanId]);
+  }, [currentPlanId, fetchFlashcards, fetchAnalytics]);
 
   // Helper functions for user-specific storage
   const getCustomSubjectsKey = (userId) => `customSubjects_${userId}`;
@@ -593,22 +604,6 @@ function App() {
       localStorage.setItem(getStudyHistoryKey(currentUserId), JSON.stringify(studyHistory));
     }
   }, [studyHistory, currentUserId]);
-
-  // Timer effect
-  useEffect(() => {
-    let interval;
-    if (timerActive) {
-      interval = setInterval(() => {
-        setTimerSeconds(prev => prev + 1);
-      }, 1000);
-    }
-    return () => clearInterval(interval);
-  }, [timerActive]);
-
-  // Get token from localStorage
-  const getToken = () => {
-    return localStorage.getItem('token');
-  };
 
   // Check if user is admin (from localStorage)
   const isUserAdmin = () => {
@@ -660,18 +655,44 @@ function App() {
     setCustomSubjects({});
   };
 
+  const notificationColors = {
+    success: "#10b981",
+    error: "#ef4444",
+    warning: "#f59e0b",
+    info: "#06b6d4",
+  };
+
+  const addNotification = (message, type = "info") => {
+    notificationIdRef.current += 1;
+    const entry = {
+      id: `notice-${notificationIdRef.current}`,
+      message,
+      type,
+      createdAt: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+    };
+
+    setNotifications((prev) => [entry, ...prev].slice(0, 6));
+  };
+
+  const handleOpenNotifications = (event) => {
+    setNotificationAnchorEl(event.currentTarget);
+  };
+
+  const handleCloseNotifications = () => {
+    setNotificationAnchorEl(null);
+  };
+
+  const clearNotifications = () => {
+    setNotifications([]);
+  };
+
   // Show snackbar
   const showSnackbar = (message, type = 'success') => {
     setSnackbar({ open: true, message, type });
+    addNotification(message, type);
   };
 
-  // Format timer
-  const formatTimer = (seconds) => {
-    const hrs = Math.floor(seconds / 3600);
-    const mins = Math.floor((seconds % 3600) / 60);
-    const secs = seconds % 60;
-    return `${String(hrs).padStart(2, '0')}:${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
-  };
+  // Note: formatTimer function removed - not currently used in the component
 
   // ===============================
   // CUSTOM SUBJECT CREATION
@@ -928,11 +949,7 @@ function App() {
   // ===============================
   // CHART DATA
   // ===============================
-  const barData = plan.map((day) => ({
-    name: `Day ${day.day}`,
-    progress: dayProgress(day),
-  }));
-
+  // Note: barData removed - not currently used, pieData is the active chart
   const pieData = [
     {
       name: "Completed",
@@ -961,16 +978,25 @@ function App() {
   // UI
   // ===============================
   const mainView = (
-    <Box sx={{ background: COLORS.bg, minHeight: "100vh" }}>
+    <Box sx={{ 
+      background: isDarkMode 
+        ? "linear-gradient(135deg, #030a06 0%, #051c12 50%, #0a2818 100%)" 
+        : COLORS.bg, 
+      minHeight: "100vh" 
+    }}>
       {/* MODERN NAVBAR */}
       <AppBar
         position="sticky"
         elevation={0}
         className="navbar-glow"
         sx={{
-          background: "linear-gradient(135deg, #011a11 0%, #052e1c 50%, #053a23 100%)",
+          background: isDarkMode
+            ? "linear-gradient(135deg, #051c12 0%, #072a18 50%, #0a3820 100%)"
+            : "linear-gradient(135deg, #011a11 0%, #052e1c 50%, #053a23 100%)",
           backdropFilter: "blur(28px)",
-          borderBottom: "1px solid rgba(52, 211, 153, 0.12)",
+          borderBottom: isDarkMode 
+            ? "1px solid rgba(34, 197, 94, 0.2)" 
+            : "1px solid rgba(52, 211, 153, 0.12)",
           height: 72,
         }}
       >
@@ -1105,6 +1131,23 @@ function App() {
               </IconButton>
 
               <IconButton
+                onClick={toggleMode}
+                title={isDarkMode ? "Switch to light mode" : "Switch to dark mode"}
+                sx={{
+                  color: "rgba(255,255,255,0.65)", borderRadius: "10px", width: 40, height: 40,
+                  transition: "all 0.2s ease",
+                  "&:hover": { color: "#60a5fa", background: "rgba(96, 165, 250, 0.12)" }
+                }}
+              >
+                {isDarkMode ? (
+                  <LightModeIcon sx={{ fontSize: 20 }} />
+                ) : (
+                  <DarkModeIcon sx={{ fontSize: 20 }} />
+                )}
+              </IconButton>
+
+              <IconButton
+                onClick={handleOpenNotifications}
                 title="Notifications"
                 sx={{
                   color: "rgba(255,255,255,0.65)", borderRadius: "10px", width: 40, height: 40,
@@ -1112,7 +1155,7 @@ function App() {
                   "&:hover": { color: "#fbbf24", background: "rgba(251, 191, 36, 0.1)" }
                 }}
               >
-                <Badge badgeContent={3} color="error"
+                <Badge badgeContent={notifications.length} color="error"
                   sx={{ "& .MuiBadge-badge": { fontSize: 9, height: 16, minWidth: 16, top: 2, right: 2 } }}
                 >
                   <NotificationsIcon sx={{ fontSize: 20 }} />
@@ -1209,6 +1252,11 @@ function App() {
           {[{
             label: "Study History", icon: <HistoryIcon />, action: () => { setShowHistory(!showHistory); setMobileMenuOpen(false); },
             color: "#34d399"
+          }, {
+            label: isDarkMode ? "Light Mode" : "Dark Mode",
+            icon: isDarkMode ? <LightModeIcon /> : <DarkModeIcon />,
+            action: () => { toggleMode(); setMobileMenuOpen(false); },
+            color: "#60a5fa"
           }, ...(isAdmin ? [{ label: "Admin Panel", icon: <SettingsIcon />, action: () => { navigate('/admin'); setMobileMenuOpen(false); }, color: "#fbbf24" }] : []),
           { label: "Logout", icon: <LogoutIcon />, action: () => { handleLogout(); setMobileMenuOpen(false); }, color: "#f87171" }
           ].map((item) => (
@@ -1229,6 +1277,93 @@ function App() {
         </Box>
       </AppBar>
 
+      {/* Notifications Menu */}
+      <Menu
+        anchorEl={notificationAnchorEl}
+        open={Boolean(notificationAnchorEl)}
+        onClose={handleCloseNotifications}
+        PaperProps={{
+          sx: {
+            mt: 1.5,
+            minWidth: 320,
+            borderRadius: "16px",
+            background: isDarkMode 
+              ? "rgba(15, 25, 20, 0.95)" 
+              : "rgba(255, 255, 255, 0.98)",
+            backdropFilter: "blur(24px)",
+            boxShadow: isDarkMode
+              ? "0 20px 60px rgba(0,0,0,0.35), 0 4px 16px rgba(34,197,94,0.1)"
+              : "0 20px 60px rgba(0,0,0,0.18), 0 4px 16px rgba(15,118,110,0.1)",
+            border: isDarkMode 
+              ? "1px solid rgba(34, 197, 94, 0.15)" 
+              : "1px solid rgba(15, 118, 110, 0.1)",
+            overflow: "hidden",
+          }
+        }}
+        transformOrigin={{ horizontal: "right", vertical: "top" }}
+        anchorOrigin={{ horizontal: "right", vertical: "bottom" }}
+      >
+        <Box sx={{ px: 2.5, py: 2, background: isDarkMode ? "linear-gradient(135deg, #0a1f1a 0%, #142d25 100%)" : "linear-gradient(135deg, #022c22 0%, #064e3b 100%)", color: "#fff" }}>
+          <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+            <Typography variant="body2" sx={{ fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase" }}>
+              Notifications
+            </Typography>
+            {notifications.length > 0 && (
+              <Button
+                size="small"
+                onClick={clearNotifications}
+                sx={{ color: "#6ee7b7", fontWeight: 700, textTransform: "none" }}
+              >
+                Clear
+              </Button>
+            )}
+          </Box>
+          <Typography variant="caption" sx={{ color: "rgba(52, 211, 153, 0.8)", fontWeight: 600 }}>
+            {notifications.length > 0 ? `${notifications.length} unread` : "All caught up"}
+          </Typography>
+        </Box>
+
+        <Divider sx={{ borderColor: "rgba(0,0,0,0.06)" }} />
+
+        {notifications.length === 0 ? (
+          <Box sx={{ px: 2.5, py: 2 }}>
+            <Typography variant="body2" sx={{ color: isDarkMode ? "#94a3b8" : "#64748B", fontWeight: 500 }}>
+              No notifications yet.
+            </Typography>
+          </Box>
+        ) : (
+          notifications.map((note) => {
+            const tone = notificationColors[note.type] || notificationColors.info;
+
+            return (
+              <MenuItem
+                key={note.id}
+                onClick={handleCloseNotifications}
+                sx={{ py: 1.2, px: 2.5, gap: 1.4, transition: "all 0.2s ease",
+                  "&:hover": { background: `${tone}10`, pl: 2.8 }
+                }}
+              >
+                <ListItemIcon sx={{ minWidth: 24 }}>
+                  <Box sx={{ width: 8, height: 8, borderRadius: "50%", background: tone, boxShadow: `0 0 8px ${tone}80` }} />
+                </ListItemIcon>
+                <ListItemText
+                  primary={
+                    <Typography variant="body2" sx={{ fontWeight: 700, color: isDarkMode ? "#e2e8f0" : "#0f172a", lineHeight: 1.3 }}>
+                      {note.message}
+                    </Typography>
+                  }
+                  secondary={
+                    <Typography variant="caption" sx={{ color: isDarkMode ? "#6b7280" : "#94a3b8", fontWeight: 600 }}>
+                      {note.createdAt}
+                    </Typography>
+                  }
+                />
+              </MenuItem>
+            );
+          })
+        )}
+      </Menu>
+
       {/* User Menu */}
       <Menu
         anchorEl={anchorEl}
@@ -1239,10 +1374,16 @@ function App() {
             mt: 1.5,
             minWidth: 240,
             borderRadius: "16px",
-            background: "rgba(255, 255, 255, 0.98)",
+            background: isDarkMode 
+              ? "rgba(15, 25, 20, 0.95)" 
+              : "rgba(255, 255, 255, 0.98)",
             backdropFilter: "blur(24px)",
-            boxShadow: "0 20px 60px rgba(0,0,0,0.18), 0 4px 16px rgba(15,118,110,0.1)",
-            border: "1px solid rgba(15, 118, 110, 0.1)",
+            boxShadow: isDarkMode
+              ? "0 20px 60px rgba(0,0,0,0.35), 0 4px 16px rgba(34,197,94,0.1)"
+              : "0 20px 60px rgba(0,0,0,0.18), 0 4px 16px rgba(15,118,110,0.1)",
+            border: isDarkMode 
+              ? "1px solid rgba(34, 197, 94, 0.15)" 
+              : "1px solid rgba(15, 118, 110, 0.1)",
             overflow: "hidden",
           }
         }}
@@ -1270,7 +1411,7 @@ function App() {
           { icon: <PersonIcon />, label: "View Profile", sub: "Account settings", color: "#0f766e", action: () => setAnchorEl(null) },
           { icon: <HistoryIcon />, label: "Study History", sub: "Past sessions", color: "#0891b2", action: () => { setAnchorEl(null); setShowHistory(!showHistory); } },
           ...(isAdmin ? [{ icon: <SettingsIcon />, label: "Admin Panel", sub: "Manage platform", color: "#d97706", action: () => { setAnchorEl(null); navigate('/admin'); } }] : []),
-        ].map((item, i) => (
+        ].map((item) => (
           <MenuItem
             key={item.label}
             onClick={item.action}
@@ -1413,20 +1554,26 @@ function App() {
             sx={{ 
               mb: 3, 
               borderRadius: 3, 
-              background: "linear-gradient(135deg, rgba(240, 249, 255, 0.95), rgba(224, 242, 254, 0.9))", 
+              background: isDarkMode 
+                ? "linear-gradient(135deg, rgba(10, 40, 24, 0.8), rgba(15, 50, 30, 0.8))" 
+                : "linear-gradient(135deg, rgba(240, 249, 255, 0.95), rgba(224, 242, 254, 0.9))", 
               border: `2px solid ${COLORS.secondary}`,
-              boxShadow: "0 8px 24px rgba(14, 165, 233, 0.15)",
+              boxShadow: isDarkMode
+                ? "0 8px 24px rgba(34, 197, 94, 0.1)"
+                : "0 8px 24px rgba(14, 165, 233, 0.15)",
               backdropFilter: "blur(10px)",
               transition: "all 0.3s ease",
               "&:hover": {
-                boxShadow: "0 12px 32px rgba(14, 165, 233, 0.2)",
+                boxShadow: isDarkMode
+                  ? "0 12px 32px rgba(34, 197, 94, 0.15)"
+                  : "0 12px 32px rgba(14, 165, 233, 0.2)",
                 transform: "translateY(-2px)"
               }
             }}
           >
             <CardContent>
               <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 2.5 }}>
-                <Typography variant="h6" sx={{ fontWeight: 700, color: COLORS.primary }}>
+                <Typography variant="h6" sx={{ fontWeight: 700, color: isDarkMode ? "#6ee7b7" : COLORS.primary }}>
                   📚 Your Study History
                 </Typography>
                 <Button 
@@ -1441,7 +1588,7 @@ function App() {
                   Close
                 </Button>
               </Box>
-              <Divider sx={{ mb: 2, borderColor: "rgba(14, 165, 233, 0.3)" }} />
+              <Divider sx={{ mb: 2, borderColor: isDarkMode ? "rgba(34, 197, 94, 0.3)" : "rgba(14, 165, 233, 0.3)" }} />
               {studyHistory.length === 0 ? (
                 <Box sx={{ textAlign: "center", py: 3 }}>
                   <Typography color="textSecondary" sx={{ fontSize: "0.95rem" }}>
@@ -1454,18 +1601,18 @@ function App() {
                     <ListItem 
                       key={entry.id} 
                       sx={{ 
-                        borderBottom: "1px solid rgba(14, 165, 233, 0.2)", 
+                        borderBottom: isDarkMode ? "1px solid rgba(34, 197, 94, 0.2)" : "1px solid rgba(14, 165, 233, 0.2)", 
                         "&:last-child": { borderBottom: "none" },
                         transition: "all 0.2s ease",
                         "&:hover": {
-                          background: "rgba(14, 165, 233, 0.08)",
+                          background: isDarkMode ? "rgba(34, 197, 94, 0.08)" : "rgba(14, 165, 233, 0.08)",
                           borderRadius: 2
                         }
                       }}
                     >
                       <ListItemText
                         primary={
-                          <Typography sx={{ fontWeight: 600, color: "#0f766e" }}>
+                          <Typography sx={{ fontWeight: 600, color: isDarkMode ? "#6ee7b7" : "#0f766e" }}>
                             {allSubjects[entry.subject]?.emoji} {entry.subject} - {entry.level}
                           </Typography>
                         }
@@ -1510,22 +1657,28 @@ function App() {
             sx={{ 
               mb: 3, 
               borderRadius: 2.5, 
-              background: "linear-gradient(135deg, rgba(240, 249, 255, 0.9), rgba(224, 242, 254, 0.85))", 
+              background: isDarkMode 
+                ? "linear-gradient(135deg, rgba(10, 40, 24, 0.8), rgba(15, 50, 30, 0.8))" 
+                : "linear-gradient(135deg, rgba(240, 249, 255, 0.9), rgba(224, 242, 254, 0.85))", 
               border: `2px solid ${COLORS.secondary}`,
-              boxShadow: "0 4px 16px rgba(14, 165, 233, 0.12)",
+              boxShadow: isDarkMode 
+                ? "0 4px 16px rgba(34, 197, 94, 0.1)" 
+                : "0 4px 16px rgba(14, 165, 233, 0.12)",
               transition: "all 0.3s ease",
               "&:hover": {
-                boxShadow: "0 6px 24px rgba(14, 165, 233, 0.18)",
+                boxShadow: isDarkMode 
+                  ? "0 6px 24px rgba(34, 197, 94, 0.15)" 
+                  : "0 6px 24px rgba(14, 165, 233, 0.18)",
                 transform: "translateY(-2px)"
               }
             }}
           >
             <CardContent sx={{ p: 2.5 }}>
               <Box>
-                <Typography variant="h6" sx={{ fontWeight: 700, mb: 0.5, color: "#0f766e" }}>
+                <Typography variant="h6" sx={{ fontWeight: 700, mb: 0.5, color: isDarkMode ? "#6ee7b7" : "#0f766e" }}>
                   {currentSubjectData?.emoji} {currentSubjectData?.fullName}
                 </Typography>
-                <Typography variant="body2" sx={{ color: "#64748B", lineHeight: 1.5 }}>
+                <Typography variant="body2" sx={{ color: isDarkMode ? "#cbd5e1" : "#64748B", lineHeight: 1.5 }}>
                   {currentSubjectData?.description}
                 </Typography>
               </Box>
@@ -2001,12 +2154,16 @@ function App() {
         {plan.length > 0 && (
           <Box sx={{ 
             mt: 1,
-            background: "linear-gradient(135deg, #0e7490 0%, #155e75 100%)",
+            background: isDarkMode
+              ? "linear-gradient(135deg, #0a3a45 0%, #0f4a55 100%)"
+              : "linear-gradient(135deg, #0e7490 0%, #155e75 100%)",
             borderRadius: 3,
             p: 3,
-            border: "1px solid #0891b2"
+            border: isDarkMode 
+              ? "1px solid rgba(34, 197, 94, 0.2)" 
+              : "1px solid #0891b2"
           }}>
-            <Typography variant="h6" sx={{ fontWeight: 700, mb: 3, color: "#67e8f9", fontSize: "1.25rem" }}>
+            <Typography variant="h6" sx={{ fontWeight: 700, mb: 3, color: isDarkMode ? "#6ee7b7" : "#67e8f9", fontSize: "1.25rem" }}>
               📅 Your Study Plan ({days} Days)
             </Typography>
             <Grid container spacing={2.5}>
@@ -2033,12 +2190,16 @@ function App() {
                       <AccordionSummary 
                         expandIcon={<ExpandMoreIcon sx={{ color: COLORS.primary }} />} 
                         sx={{ 
-                          background: "linear-gradient(135deg, #F9FAFB 0%, #F0F9FF 100%)", 
+                          background: isDarkMode
+                            ? "linear-gradient(135deg, #1e2d2a 0%, #1a3a35 100%)"
+                            : "linear-gradient(135deg, #F9FAFB 0%, #F0F9FF 100%)", 
                           py: 2.5,
                           px: 2,
                           transition: "all 0.2s ease",
                           "&:hover": {
-                            background: "linear-gradient(135deg, #F0F9FF 0%, #E0F2FE 100%)"
+                            background: isDarkMode
+                              ? "linear-gradient(135deg, #1a3a35 0%, #165e57 100%)"
+                              : "linear-gradient(135deg, #F0F9FF 0%, #E0F2FE 100%)"
                           }
                         }}
                       >
@@ -2090,7 +2251,7 @@ function App() {
                         </Box>
                       </AccordionSummary>
 
-                      <AccordionDetails sx={{ pt: 3, background: "#FAFBFC", px: 2 }}>
+                      <AccordionDetails sx={{ pt: 3, background: isDarkMode ? "#0d1b18" : "#FAFBFC", px: 2 }}>
                         {day.topics && day.topics.length > 0 ? (
                           <>
                             <List sx={{ p: 0 }}>
@@ -2103,15 +2264,19 @@ function App() {
                                     mb: 1,
                                     borderRadius: 2,
                                     borderBottom: "none", 
-                                    background: "#fff",
-                                    border: "1px solid #E2E8F0",
+                                    background: isDarkMode ? "#1a2f2c" : "#fff",
+                                    border: isDarkMode ? "1px solid #374151" : "1px solid #E2E8F0",
                                     transition: "all 0.2s ease", 
                                     cursor: "pointer", 
                                     "&:hover": { 
-                                      background: "linear-gradient(135deg, #F0F9FF, #E0F2FE)",
+                                      background: isDarkMode 
+                                        ? "linear-gradient(135deg, #1e3e3a, #2a4a45)"
+                                        : "linear-gradient(135deg, #F0F9FF, #E0F2FE)",
                                       borderColor: COLORS.secondary,
                                       transform: "translateX(4px)",
-                                      boxShadow: "0 2px 8px rgba(14, 165, 233, 0.15)"
+                                      boxShadow: isDarkMode 
+                                        ? "0 2px 8px rgba(52, 211, 153, 0.1)"
+                                        : "0 2px 8px rgba(14, 165, 233, 0.15)"
                                     }
                                   }} 
                                   onClick={() => toggleSubtopic(i, j)}
@@ -2135,13 +2300,13 @@ function App() {
                                         width: 28, 
                                         height: 28, 
                                         borderRadius: "50%", 
-                                        background: "#F1F5F9",
+                                        background: isDarkMode ? "#374151" : "#F1F5F9",
                                         display: "flex",
                                         alignItems: "center",
                                         justifyContent: "center",
-                                        border: "2px solid #CBD5E1"
+                                        border: isDarkMode ? "2px solid #6b7280" : "2px solid #CBD5E1"
                                       }}>
-                                        <RadioButtonUncheckedIcon sx={{ color: "#94A3B8", fontSize: 18 }} />
+                                        <RadioButtonUncheckedIcon sx={{ color: isDarkMode ? "#d1d5db" : "#94A3B8", fontSize: 18 }} />
                                       </Box>
                                     )}
                                   </ListItemIcon>
@@ -2150,14 +2315,16 @@ function App() {
                                       <Typography sx={{ 
                                         fontWeight: 600, 
                                         textDecoration: topic.completed ? "line-through" : "none", 
-                                        color: topic.completed ? "#94A3B8" : "#1E293B",
+                                        color: topic.completed 
+                                          ? isDarkMode ? "#9ca3af" : "#94A3B8"
+                                          : isDarkMode ? "#e2e8f0" : "#1E293B",
                                         fontSize: "0.95rem"
                                       }}>
                                         {topic.name}
                                       </Typography>
                                     }
                                     secondary={
-                                      <Typography variant="caption" sx={{ color: "#64748B", mt: 0.5, fontWeight: 500 }}>
+                                      <Typography variant="caption" sx={{ color: isDarkMode ? "#9ca3af" : "#64748B", mt: 0.5, fontWeight: 500 }}>
                                         ⏱️ {topic.hours}h • Click to mark complete
                                       </Typography>
                                     }
@@ -2168,7 +2335,7 @@ function App() {
                             <Box sx={{ 
                               mt: 2.5, 
                               pt: 2.5, 
-                              borderTop: "2px solid #E2E8F0",
+                              borderTop: isDarkMode ? "2px solid #374151" : "2px solid #E2E8F0",
                               display: "flex",
                               alignItems: "center",
                               gap: 1
@@ -2180,7 +2347,7 @@ function App() {
                                 background: COLORS.ahead,
                                 boxShadow: `0 0 8px ${COLORS.ahead}80`
                               }} />
-                              <Typography variant="caption" sx={{ fontWeight: 600, color: "#64748B", fontSize: "0.85rem" }}>
+                              <Typography variant="caption" sx={{ fontWeight: 600, color: isDarkMode ? "#9ca3af" : "#64748B", fontSize: "0.85rem" }}>
                                 {day.topics.filter(t => t.completed).length} of {day.topics.length} completed
                               </Typography>
                             </Box>
