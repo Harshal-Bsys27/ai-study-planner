@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useReducer } from "react";
+import React, { useEffect, useRef, useReducer, useContext } from "react";
 import {
   Card,
   CardContent,
@@ -11,8 +11,11 @@ import {
 import PlayArrowIcon from "@mui/icons-material/PlayArrow";
 import PauseIcon from "@mui/icons-material/Pause";
 import StopIcon from "@mui/icons-material/Stop";
+import { ThemeModeContext } from "../theme";
 
 const PomodoroTimer = ({ planId, topic, onSessionComplete }) => {
+  const { mode } = useContext(ThemeModeContext);
+  const isDarkMode = mode === "dark";
   const FOCUS_TIME = 1500; // 25 minutes
   const BREAK_TIME = 300; // 5 minutes
 
@@ -114,11 +117,17 @@ const PomodoroTimer = ({ planId, topic, onSessionComplete }) => {
         display: 'flex',
         flexDirection: 'column',
         background: state.isBreak
-          ? "linear-gradient(135deg, #667eea 0%, #764ba2 100%)"
-          : "linear-gradient(135deg, #f093fb 0%, #f5576c 100%)",
+          ? isDarkMode
+            ? "linear-gradient(135deg, #3730a3 0%, #4c1d95 100%)"
+            : "linear-gradient(135deg, #667eea 0%, #764ba2 100%)"
+          : isDarkMode
+            ? "linear-gradient(135deg, #9f1239 0%, #7c2d12 100%)"
+            : "linear-gradient(135deg, #f093fb 0%, #f5576c 100%)",
         color: "white",
         borderRadius: 3,
-        boxShadow: "0 4px 12px rgba(0,0,0,0.05)",
+        boxShadow: isDarkMode 
+          ? "0 4px 12px rgba(34, 197, 94, 0.1)" 
+          : "0 4px 12px rgba(0,0,0,0.05)",
       }}
     >
       <CardContent sx={{ textAlign: "center", flexGrow: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
