@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useContext } from "react";
 import {
   Card,
   CardContent,
@@ -17,6 +17,7 @@ import {
 import AddIcon from "@mui/icons-material/Add";
 import DeleteIcon from "@mui/icons-material/Delete";
 import FlipIcon from "@mui/icons-material/FlipToBack";
+import { ThemeModeContext } from "../theme";
 
 const FlashcardWidget = ({ planId, flashcards = [], onAddFlashcard, onDeleteFlashcard }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -25,6 +26,8 @@ const FlashcardWidget = ({ planId, flashcards = [], onAddFlashcard, onDeleteFlas
   const [question, setQuestion] = useState("");
   const [answer, setAnswer] = useState("");
   const [topic, setTopic] = useState("");
+  const { mode } = useContext(ThemeModeContext);
+  const isDarkMode = mode === "dark";
 
   const handleAddFlashcard = () => {
     if (!question.trim()) {
@@ -67,9 +70,20 @@ const FlashcardWidget = ({ planId, flashcards = [], onAddFlashcard, onDeleteFlas
   const currentCard = flashcards[currentIndex];
 
   return (
-    <Card sx={{ height: '100%', display: 'flex', flexDirection: 'column', borderRadius: 3, boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}>
+    <Card sx={{ 
+      height: '100%', 
+      display: 'flex', 
+      flexDirection: 'column', 
+      borderRadius: 3, 
+      boxShadow: isDarkMode 
+        ? '0 4px 12px rgba(34, 197, 94, 0.1)' 
+        : '0 4px 12px rgba(0,0,0,0.05)',
+      background: isDarkMode 
+        ? "rgba(10, 20, 15, 0.8)" 
+        : "#ffffff"
+    }}>
       <CardContent sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column' }}>
-        <Typography variant="h6" sx={{ mb: 2, fontWeight: "bold" }}>
+        <Typography variant="h6" sx={{ mb: 2, fontWeight: "bold", color: isDarkMode ? "#6ee7b7" : "#000" }}>
           📇 Flashcards
         </Typography>
 
@@ -86,15 +100,23 @@ const FlashcardWidget = ({ planId, flashcards = [], onAddFlashcard, onDeleteFlas
                   justifyContent: "center",
                   cursor: "pointer",
                   background: isFlipped
-                    ? "linear-gradient(135deg, #10B981 0%, #047857 100%)"
-                    : "linear-gradient(135deg, #0ea5e9 0%, #0369a1 100%)",
+                    ? isDarkMode 
+                      ? "linear-gradient(135deg, #065f46 0%, #034e37 100%)" 
+                      : "linear-gradient(135deg, #10B981 0%, #047857 100%)"
+                    : isDarkMode 
+                      ? "linear-gradient(135deg, #0c4a6e 0%, #0a3c54 100%)" 
+                      : "linear-gradient(135deg, #0ea5e9 0%, #0369a1 100%)",
                   color: "white",
                   borderRadius: 3,
-                  boxShadow: 2,
+                  boxShadow: isDarkMode ? 
+                    "0 8px 24px rgba(34, 197, 94, 0.15)" : 
+                    "0 8px 24px rgba(15, 118, 110, 0.15)",
                   transition: "all 0.3s ease",
                   "&:hover": {
                     transform: "scale(1.02)",
-                    boxShadow: 4,
+                    boxShadow: isDarkMode 
+                      ? "0 12px 40px rgba(34, 197, 94, 0.2)"
+                      : "0 12px 40px rgba(15, 118, 110, 0.25)",
                   },
                 }}
               >
