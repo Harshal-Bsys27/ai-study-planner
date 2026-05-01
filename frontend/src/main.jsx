@@ -1,26 +1,35 @@
-import { StrictMode } from 'react'
+import { StrictMode, useMemo, useState, useEffect } from 'react'
 import { createRoot } from 'react-dom/client'
 import { BrowserRouter } from 'react-router-dom'
 import { ThemeProvider, createTheme } from '@mui/material/styles'
 import CssBaseline from '@mui/material/CssBaseline'
 import './index.css'
 import App from './App.jsx'
+import { ThemeModeContext } from './theme'
 
-const theme = createTheme({
+const getTheme = (mode) => createTheme({
   palette: {
-    mode: 'light',
+    mode,
     primary:    { main: '#0f766e', light: '#14b8a6', dark: '#0d6460', contrastText: '#fff' },
     secondary:  { main: '#06b6d4', light: '#22d3ee', dark: '#0891b2', contrastText: '#fff' },
     success:    { main: '#10b981', light: '#34d399', dark: '#059669' },
     warning:    { main: '#f59e0b', light: '#fbbf24', dark: '#d97706' },
     error:      { main: '#f43f5e', light: '#fb7185', dark: '#e11d48' },
-    background: { default: '#f0f9ff', paper: '#ffffff' },
-    text: {
-      primary:   '#0b1f24',
-      secondary: '#4b5a5f',
-      disabled:  '#94a3b8',
-    },
-    divider: 'rgba(15, 118, 110, 0.1)',
+    background: mode === 'light'
+      ? { default: '#f0f9ff', paper: '#ffffff' }
+      : { default: '#061311', paper: '#0b1f1c' },
+    text: mode === 'light'
+      ? {
+          primary: '#0b1f24',
+          secondary: '#4b5a5f',
+          disabled: '#94a3b8',
+        }
+      : {
+          primary: '#e2e8f0',
+          secondary: '#a3b3b8',
+          disabled: '#64748b',
+        },
+    divider: mode === 'light' ? 'rgba(15, 118, 110, 0.1)' : 'rgba(148, 163, 184, 0.2)',
   },
 
   typography: {
@@ -243,13 +252,44 @@ const theme = createTheme({
   },
 })
 
+const getStoredMode = () => {
+  const stored = localStorage.getItem('themeMode')
+  return stored === 'dark' || stored === 'light' ? stored : 'light'
+}
+
+export const Root = () => {
+  const [mode, setMode] = useState(getStoredMode)
+  const theme = useMemo(() => getTheme(mode), [mode])
+
+  const toggleMode = () => {
+    setMode((prev) => {
+      const next = prev === 'light' ? 'dark' : 'light'
+      localStorage.setItem('themeMode', next)
+      // Update html data attribute for CSS to respond
+      document.documentElement.setAttribute('data-theme', next)
+      return next
+    })
+  }
+
+  // Set initial theme on mount
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', mode)
+  }, [mode])
+
+  return (
+    <ThemeModeContext.Provider value={{ mode, toggleMode }}>
+      <ThemeProvider theme={theme}>
+        <CssBaseline />
+        <BrowserRouter>
+          <App />
+        </BrowserRouter>
+      </ThemeProvider>
+    </ThemeModeContext.Provider>
+  )
+}
+
 createRoot(document.getElementById('root')).render(
   <StrictMode>
-    <ThemeProvider theme={theme}>
-      <CssBaseline />
-      <BrowserRouter>
-        <App />
-      </BrowserRouter>
-    </ThemeProvider>
+    <Root />
   </StrictMode>,
 )
