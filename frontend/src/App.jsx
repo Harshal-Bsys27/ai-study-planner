@@ -79,6 +79,7 @@ import ProgressChart from "./components/ProgressChart";
 import StreakTracker from "./components/StreakTracker";
 import FlashcardWidget from "./components/FlashcardWidget";
 import ExportPlan from "./components/ExportPlan";
+import TopicsStatistics from "./components/TopicsStatistics";
 import { ThemeModeContext } from "./theme";
 
 const API_URL = import.meta.env.VITE_API_URL;
@@ -307,6 +308,15 @@ function App() {
   const [notifications, setNotifications] = useState([]);
   const [notificationAnchorEl, setNotificationAnchorEl] = useState(null);
   const notificationIdRef = useRef(0);
+
+  // Quick Win Features State
+  const [planFilters, setPlanFilters] = useState({
+    difficulty: "", // "Beginner", "Intermediate", "Advanced"
+    duration: "", // "1-3", "4-7", "8+"
+    subject: "", // Subject name
+  });
+  const [completedPlans, setCompletedPlans] = useState([]);
+  const [showArchive, setShowArchive] = useState(false);
 
   const navigate = useNavigate();
   const { mode, toggleMode } = useContext(ThemeModeContext);
@@ -653,6 +663,25 @@ function App() {
     setSearchResults([]);
     setStudyHistory([]);
     setCustomSubjects({});
+  };
+
+  // Mark plan as completed
+  const markPlanAsCompleted = () => {
+    if (plan.length > 0) {
+      const completedPlan = {
+        id: currentPlanId,
+        subject,
+        level,
+        days: plan.length,
+        completedAt: new Date().toLocaleString(),
+      };
+      setCompletedPlans([completedPlan, ...completedPlans]);
+      setPlan([]);
+      setCurrentPlanId(null);
+      setFlashcards([]);
+      setPlanAnalytics(null);
+      showSnackbar("🎉 Plan marked as completed! Moved to archive.");
+    }
   };
 
   const notificationColors = {
@@ -2151,6 +2180,9 @@ function App() {
         )}
 
         {/* DAY CARDS - ENHANCED */}
+        {/* Topics Statistics - Shows time breakdown by topic */}
+        {plan.length > 0 && <TopicsStatistics plan={plan} />}
+
         {plan.length > 0 && (
           <Box sx={{ 
             mt: 1,
@@ -2163,9 +2195,39 @@ function App() {
               ? "1px solid rgba(34, 197, 94, 0.2)" 
               : "1px solid #0891b2"
           }}>
-            <Typography variant="h6" sx={{ fontWeight: 700, mb: 3, color: isDarkMode ? "#6ee7b7" : "#67e8f9", fontSize: "1.25rem" }}>
-              📅 Your Study Plan ({days} Days)
-            </Typography>
+            {/* Plan Header with Filters and Actions */}
+            <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 3, flexWrap: "wrap", gap: 2 }}>
+              <Typography variant="h6" sx={{ fontWeight: 700, color: isDarkMode ? "#6ee7b7" : "#67e8f9", fontSize: "1.25rem" }}>
+                📅 Your Study Plan ({days} Days)
+              </Typography>
+              <Box sx={{ display: "flex", gap: 1.5, flexWrap: "wrap", alignItems: "center" }}>
+                {/* Filter Buttons */}
+                <FormControl size="small" sx={{ minWidth: 120 }}>
+                  <InputLabel sx={{ color: "rgba(255,255,255,0.7)" }}>Difficulty</InputLabel>
+                  <Select
+                    value={planFilters.difficulty}
+                    label="Difficulty"
+                    onChange={(e) => setPlanFilters({ ...planFilters, difficulty: e.target.value })}
+                    sx={{ color: "rgba(255,255,255,0.9)", ".MuiOutlinedInput-notchedOutline": { borderColor: "rgba(255,255,255,0.3)" } }}
+                  >
+                    <MenuItem value="">All Levels</MenuItem>
+                    <MenuItem value="Beginner">Beginner</MenuItem>
+                    <MenuItem value="Intermediate">Intermediate</MenuItem>
+                    <MenuItem value="Advanced">Advanced</MenuItem>
+                  </Select>
+                </FormControl>
+
+                {/* Complete Plan Button */}
+                <Button
+                  size="small"
+                  variant="contained"
+                  onClick={markPlanAsCompleted}
+                  sx={{ background: "#10b981", color: "#fff", fontWeight: 600, "&:hover": { background: "#059669" } }}
+                >
+                  ✓ Mark Complete
+                </Button>
+              </Box>
+            </Box>
             <Grid container spacing={2.5}>
               {plan.map((day, i) => {
                 const status = statusInfo(day);
@@ -2365,6 +2427,79 @@ function App() {
                 );
               })}
             </Grid>
+          </Box>
+        )}
+
+        {/* Completed Plans Archive */}
+        {completedPlans.length > 0 && (
+          <Box sx={{ mt: 4 }}>
+            <Button
+              onClick={() => setShowArchive(!showArchive)}
+              sx={{
+                fontWeight: 700,
+                fontSize: "1rem",
+                textTransform: "none",
+                color: isDarkMode ? "#6ee7b7" : "#0f766e",
+                mb: 2,
+              }}
+            >
+              📦 Completed Plans Archive ({completedPlans.length}) {showArchive ? "▼" : "▶"}
+            </Button>
+
+            {showArchive && (
+              <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "repeat(2, 1fr)" }, gap: 2 }}>
+                {completedPlans.map((completedPlan, idx) => (
+                  <Card
+                    key={idx}
+                    sx={{
+                      borderRadius: 2.5,
+                      background: isDarkMode
+                        ? "linear-gradient(135deg, rgba(16, 185, 129, 0.1), rgba(52, 211, 153, 0.1))"
+                        : "linear-gradient(135deg, rgba(16, 185, 129, 0.05), rgba(52, 211, 153, 0.05))",
+                      border: isDarkMode ? "2px solid #10b981" : "2px solid #34d399",
+                      transition: "all 0.2s ease",
+                      "&:hover": {
+                        transform: "translateY(-4px)",
+                        boxShadow: isDarkMode
+                          ? "0 8px 24px rgba(16, 185, 129, 0.15)"
+                          : "0 8px 24px rgba(16, 185, 129, 0.1)",
+                      },
+                    }}
+                  >
+                    <CardContent>
+                      <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", mb: 1.5 }}>
+                        <Typography
+                          variant="h6"
+                          sx={{
+                            fontWeight: 700,
+                            color: isDarkMode ? "#6ee7b7" : "#0f766e",
+                          }}
+                        >
+                          ✓ {completedPlan.subject}
+                        </Typography>
+                        <Chip
+                          label={completedPlan.level}
+                          size="small"
+                          sx={{
+                            background: isDarkMode ? "#065f46" : "#dcfce7",
+                            color: isDarkMode ? "#6ee7b7" : "#166534",
+                            fontWeight: 600,
+                          }}
+                        />
+                      </Box>
+                      <Stack spacing={0.8}>
+                        <Typography variant="body2" sx={{ color: isDarkMode ? "#9ca3af" : "#64748b" }}>
+                          📅 {completedPlan.days} Days Plan
+                        </Typography>
+                        <Typography variant="caption" sx={{ color: isDarkMode ? "#6b7280" : "#94a3b8" }}>
+                          Completed: {completedPlan.completedAt}
+                        </Typography>
+                      </Stack>
+                    </CardContent>
+                  </Card>
+                ))}
+              </Box>
+            )}
           </Box>
         )}
 
