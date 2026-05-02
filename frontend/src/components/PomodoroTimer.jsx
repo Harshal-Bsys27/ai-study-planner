@@ -18,6 +18,13 @@ const PomodoroTimer = ({ planId, topic, onSessionComplete }) => {
   const isDarkMode = mode === "dark";
   const FOCUS_TIME = 1500; // 25 minutes
   const BREAK_TIME = 300; // 5 minutes
+  
+  // Duration presets (in seconds)
+  const DURATION_PRESETS = [
+    { label: "25 min", seconds: 1500, icon: "🔴" },
+    { label: "45 min", seconds: 2700, icon: "🟠" },
+    { label: "2 hrs", seconds: 7200, icon: "🟡" },
+  ];
 
   // Reducer for batching state updates
   const timerReducer = (state, action) => {
@@ -27,20 +34,24 @@ const PomodoroTimer = ({ planId, topic, onSessionComplete }) => {
       case 'TOGGLE':
         return { ...state, isRunning: !state.isRunning };
       case 'RESET':
-        return { timeLeft: FOCUS_TIME, isRunning: false, isBreak: false, sessionsCompleted: state.sessionsCompleted };
+        return { timeLeft: FOCUS_TIME, isRunning: false, isBreak: false, sessionsCompleted: state.sessionsCompleted, customDuration: null };
+      case 'SET_CUSTOM_DURATION':
+        return { ...state, timeLeft: action.payload, isRunning: false, isBreak: false, sessionsCompleted: 0, customDuration: action.payload };
       case 'COMPLETE_SESSION':
         return {
           timeLeft: BREAK_TIME,
           isRunning: state.isRunning,
           isBreak: true,
           sessionsCompleted: state.sessionsCompleted + 1,
+          customDuration: state.customDuration,
         };
       case 'COMPLETE_BREAK':
         return {
-          timeLeft: FOCUS_TIME,
+          timeLeft: state.customDuration || FOCUS_TIME,
           isRunning: state.isRunning,
           isBreak: false,
           sessionsCompleted: state.sessionsCompleted,
+          customDuration: state.customDuration,
         };
       default:
         return state;
@@ -52,6 +63,7 @@ const PomodoroTimer = ({ planId, topic, onSessionComplete }) => {
     isRunning: false,
     isBreak: false,
     sessionsCompleted: 0,
+    customDuration: null,
   });
 
   const lastSessionTimeRef = useRef(0);
@@ -152,6 +164,31 @@ const PomodoroTimer = ({ planId, topic, onSessionComplete }) => {
             },
           }}
         />
+
+        {/* Duration Presets */}
+        <Box sx={{ mb: 3, display: "flex", gap: 1, justifyContent: "center", flexWrap: "wrap" }}>
+          {DURATION_PRESETS.map((preset) => (
+            <Button
+              key={preset.label}
+              size="small"
+              variant={state.customDuration === preset.seconds ? "contained" : "outlined"}
+              onClick={() => dispatch({ type: 'SET_CUSTOM_DURATION', payload: preset.seconds })}
+              disabled={state.isRunning}
+              sx={{
+                borderColor: "rgba(255,255,255,0.5)",
+                color: state.customDuration === preset.seconds ? "black" : "white",
+                background: state.customDuration === preset.seconds ? "white" : "transparent",
+                fontWeight: 600,
+                fontSize: "0.8rem",
+                "&:hover": {
+                  background: state.customDuration === preset.seconds ? "white" : "rgba(255,255,255,0.15)",
+                }
+              }}
+            >
+              {preset.icon} {preset.label}
+            </Button>
+          ))}
+        </Box>
 
         <Stack direction="row" spacing={1} justifyContent="center" sx={{ mb: 2 }}>
           <Button
