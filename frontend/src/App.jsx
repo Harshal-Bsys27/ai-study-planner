@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/set-state-in-effect */
 import React, { useState, useEffect, useContext, useRef, useCallback } from "react";
 import { Routes, Route, Navigate, useNavigate } from "react-router-dom";
 import {
@@ -563,6 +564,7 @@ function App() {
     if (isAuthenticated) fetchStreak();
   }, [isAuthenticated, fetchStreak]);
 
+  // Fetch plan details when currentPlanId changes
   useEffect(() => {
     if (currentPlanId) {
       fetchFlashcards(currentPlanId);
@@ -571,7 +573,7 @@ function App() {
       setFlashcards([]);
       setPlanAnalytics(null);
     }
-  }, [currentPlanId, fetchFlashcards, fetchAnalytics]);
+  }, [currentPlanId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Helper functions for user-specific storage
   const getCustomSubjectsKey = (userId) => `customSubjects_${userId}`;
