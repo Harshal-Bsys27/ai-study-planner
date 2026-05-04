@@ -332,9 +332,9 @@ const ProgressChart = ({ analytics }) => {
                     borderRadius: "8px",
                     boxShadow: isDarkMode 
                       ? "0 4px 12px rgba(0,0,0,0.3)" 
-                      : "0 4px 12px rgba(0,0,0,0.1)"
+                      : "0 4px 12px rgba(0,0,0,0.1)",
+                    color: isDarkMode ? "#e5e7eb" : "#000"
                   }}
-                  contentStyle={{ color: isDarkMode ? "#e5e7eb" : "#000" }}
                 />
               </PieChart>
             </ResponsiveContainer>
