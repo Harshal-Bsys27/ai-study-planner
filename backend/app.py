@@ -9,8 +9,9 @@ from sqlalchemy import func, text
 
 from models import db, User, StudyPlan, UserProgress, StudyNotes, StudySession, Flashcard, PomodoroSession, StudyStreak
 from config import get_config
+from ai_service import get_ai_service
 
-load_dotenv()
+load_dotenv(override=True)
 
 
 def create_app():
@@ -241,16 +242,29 @@ def create_app():
             hours = float(data.get("hours", 2))
             level = data.get("level", "Beginner")
 
-            plan_data = [
-                {
-                    "day": i,
-                    "topics": [
-                        {"name": f"Topic {j}", "completed": False, "hours": hours}
-                        for j in range(1, 3)
-                    ],
-                }
-                for i in range(1, days + 1)
-            ]
+            # ── AI-powered plan generation via LangChain + Gemini ──
+            try:
+                ai = get_ai_service()
+                plan_data = ai.generate_study_plan(
+                    subject=subject,
+                    level=level,
+                    days=days,
+                    hours_per_day=hours,
+                )
+            except Exception as ai_err:
+                # Graceful fallback: static placeholder topics
+                import logging
+                logging.getLogger(__name__).warning(f"AI plan gen failed, using fallback: {ai_err}")
+                plan_data = [
+                    {
+                        "day": i,
+                        "topics": [
+                            {"name": f"{subject} - Topic {j}", "completed": False, "hours": round(hours / 2, 1)}
+                            for j in range(1, 3)
+                        ],
+                    }
+                    for i in range(1, days + 1)
+                ]
 
             plan = StudyPlan(
                 user_id=current_user_id,
@@ -272,6 +286,7 @@ def create_app():
                 "days": days,
                 "plan": plan_data,
                 "total_hours": days * hours,
+                "ai_generated": True,
             }), 201
 
         except Exception as e:
@@ -679,8 +694,64 @@ def create_app():
         except Exception as e:
             return jsonify({'error': str(e)}), 500
 
+    # ==================== AI ENDPOINTS ====================
+
+    @app.route('/api/ai/generate-flashcards', methods=['POST'])
+    @token_required
+    def ai_generate_flashcards(current_user_id):
+        """AI: Auto-generate flashcards for a topic using LangChain + Gemini"""
+        try:
+            data = request.json or {}
+            plan_id = data.get('plan_id')
+            topic = data.get('topic', '').strip()
+            num_cards = min(int(data.get('num_cards', 5)), 10)  # max 10
+
+            if not plan_id or not topic:
+                return jsonify({'error': 'plan_id and topic are required'}), 400
+
+            plan = StudyPlan.query.filter_by(id=plan_id, user_id=current_user_id).first()
+            if not plan:
+                return jsonify({'error': 'Plan not found'}), 404
+
+            # Call AI service
+            ai = get_ai_service()
+            cards_data = ai.generate_flashcards(topic=topic, num_cards=num_cards)
+
+            if not cards_data:
+                return jsonify({'error': 'AI could not generate flashcards. Check GEMINI_API_KEY.'}), 503
+
+            # Save to DB
+            saved = []
+            for c in cards_data:
+                question = c.get('question', '').strip()
+                answer = c.get('answer', '').strip()
+                if not question or not answer:
+                    continue
+                fc = Flashcard(plan_id=plan_id, question=question, answer=answer, topic=topic)
+                db.session.add(fc)
+                db.session.flush()
+                saved.append({
+                    'id': fc.id,
+                    'plan_id': fc.plan_id,
+                    'question': fc.question,
+                    'answer': fc.answer,
+                    'topic': fc.topic,
+                })
+
+            db.session.commit()
+            return jsonify({
+                'message': f'✅ Generated {len(saved)} flashcards for "{topic}"',
+                'flashcards': saved,
+                'count': len(saved),
+            }), 201
+
+        except Exception as e:
+            db.session.rollback()
+            return jsonify({'error': str(e)}), 500
+
     # ==================== FLASHCARD ENDPOINTS ====================
     
+
     @app.route('/api/flashcards', methods=['POST'])
     @token_required
     def create_flashcard(current_user_id):
@@ -849,25 +920,28 @@ def ensure_admin_user(app):
     with app.app_context():
         admin = User.query.filter_by(username='admin').first()
         
-        if admin:
-            # Update existing admin with correct password
-            admin.set_password('admin123')
-            admin.is_admin = True
-            admin.is_active = True
-            db.session.commit()
-            print("✅ Admin user updated with correct password")
-        else:
-            # Create new admin user
-            admin = User(
-                username='admin',
-                email='admin@example.com',
-                is_admin=True,
-                is_active=True
-            )
-            admin.set_password('admin123')
-            db.session.add(admin)
-            db.session.commit()
-            print("✅ Admin user created")
+        try:
+            admin_emails = [e.strip().lower() for e in os.getenv('ADMIN_EMAILS', '').split(',') if e.strip()]
+            admin_usernames = [u.strip().lower() for u in os.getenv('ADMIN_USERNAMES', '').split(',') if u.strip()]
+            admin_password = os.getenv('ADMIN_PASSWORD', 'admin123')
+            
+            for username in admin_usernames:
+                admin_user = User.query.filter_by(username=username).first()
+                if admin_user:
+                    admin_user.is_admin = True
+                    admin_user.is_active = True
+                    admin_user.set_password(admin_password)
+                    db.session.commit()
+                    print(f"[*] Admin user {username} updated with correct password")
+                else:
+                    email = admin_emails[0] if admin_emails else f"{username}@example.com"
+                    new_admin = User(username=username, email=email, is_admin=True, is_active=True)
+                    new_admin.set_password(admin_password)
+                    db.session.add(new_admin)
+                    db.session.commit()
+                    print(f"[*] Admin user {username} created")
+        except Exception as e:
+            print(f"[!] Error ensuring admin user: {e}")
 
 
 if __name__ == '__main__':
@@ -881,12 +955,12 @@ if __name__ == '__main__':
             ensure_admin_user(app)
 
             print("\n" + "="*60)
-            print("✅ AI Study Planner Backend Started")
+            print("AI Study Planner Backend Started")
             print("="*60)
-            print(f"🌍 Environment: {env.upper()}")
-            print(f"🗄️  Database: {'SQLite' if env == 'development' else 'PostgreSQL'}")
-            print(f"🔗 API: http://localhost:5000/api")
-            print(f"❤️  Health: http://localhost:5000/api/health")
+            print(f"Environment: {env.upper()}")
+            print(f"Database: {'SQLite' if env == 'development' else 'PostgreSQL'}")
+            print(f"API: http://localhost:5000/api")
+            print(f"Health: http://localhost:5000/api/health")
             print("="*60 + "\n")
     
     app.run(debug=(env == 'development'), host='0.0.0.0', port=5000)
