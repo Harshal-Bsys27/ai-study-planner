@@ -1,304 +1,341 @@
 """
-AI Service Module - Topic Generation using Google Gemini (Free!)
+AI Service Module - LangChain + Google Gemini Integration
 
-This module provides AI-powered study topic generation using the free
-Google Gemini API. No API costs, no credit card required.
+Features:
+- AI-powered study plan generation (structured JSON via LangChain)
+- Topic generation per subject/level
+- Flashcard Q&A generation
 
 Setup:
-1. Get free API key: https://ai.google.dev
-2. Add to .env: GEMINI_API_KEY=your_key
-3. Install: pip install google-generativeai
-
-Usage:
-    generator = TopicGenerator()
-    topics = generator.generate_topics("Data Structures", "Beginner")
+1. Get free Gemini API key: https://ai.google.dev
+2. Add to .env: GEMINI_API_KEY=your_key_here
+3. pip install langchain langchain-google-genai langchain-core google-generativeai
 """
 
 import os
+import json
 import logging
-from typing import List, Dict
-import google.generativeai as genai
+import re
+from typing import List, Dict, Optional
 
 logger = logging.getLogger(__name__)
 
+# ---------------------------------------------------------------------------
+# LangChain imports (with graceful fallback if not installed)
+# ---------------------------------------------------------------------------
+try:
+    from langchain_google_genai import ChatGoogleGenerativeAI
+    from langchain_core.prompts import ChatPromptTemplate
+    from langchain_core.output_parsers import StrOutputParser
+    LANGCHAIN_AVAILABLE = True
+    logger.info("✅ LangChain + Gemini loaded")
+except ImportError:
+    LANGCHAIN_AVAILABLE = False
+    logger.warning("⚠️  LangChain not installed — falling back to google-generativeai")
 
-class TopicGenerator:
-    """Generate study topics using free Google Gemini API"""
-    
+# Fallback: raw google-generativeai
+try:
+    import google.generativeai as genai
+    GENAI_AVAILABLE = True
+except ImportError:
+    GENAI_AVAILABLE = False
+    logger.warning("⚠️  google-generativeai not installed either — AI features disabled")
+
+
+# ---------------------------------------------------------------------------
+# LangChain-based AI Service
+# ---------------------------------------------------------------------------
+
+class AIStudyService:
+    """
+    LangChain + Gemini powered study assistant.
+    Provides:
+      - generate_study_plan()   → full day-by-day plan as list of dicts
+      - generate_topics()       → list of topic strings
+      - generate_flashcards()   → list of {question, answer} dicts
+    """
+
     def __init__(self):
-        """Initialize Gemini API with free key"""
-        api_key = os.getenv("GEMINI_API_KEY")
-        if not api_key:
-            raise ValueError(
-                "❌ GEMINI_API_KEY not found in environment variables. "
-                "Get free key at https://ai.google.dev"
-            )
-        
-        genai.configure(api_key=api_key)
-        self.model = genai.GenerativeModel("gemini-pro")
-        logger.info("✅ Gemini AI Service initialized (FREE tier)")
-    
-    def generate_topics(self, subject: str, level: str = "Beginner", 
-                       num_topics: int = 8) -> List[str]:
+        self.api_key = os.getenv("GEMINI_API_KEY", "").strip()
+        self.llm = None
+        self._init_llm()
+
+    def _init_llm(self):
+        if not self.api_key:
+            logger.warning("⚠️  GEMINI_API_KEY not set — AI features will use fallback")
+            return
+
+        if LANGCHAIN_AVAILABLE:
+            try:
+                self.llm = ChatGoogleGenerativeAI(
+                    model="gemini-1.5-flash",
+                    google_api_key=self.api_key,
+                    temperature=0.7,
+                    convert_system_message_to_human=True,
+                )
+                logger.info("✅ LangChain ChatGoogleGenerativeAI initialized")
+            except Exception as e:
+                logger.error(f"❌ LangChain LLM init failed: {e}")
+                self.llm = None
+        elif GENAI_AVAILABLE:
+            genai.configure(api_key=self.api_key)
+            self.llm = genai.GenerativeModel("gemini-1.5-flash")
+            logger.info("✅ google-generativeai fallback initialized")
+
+    # -----------------------------------------------------------------------
+    # PUBLIC: Generate full study plan (LangChain chain)
+    # -----------------------------------------------------------------------
+    def generate_study_plan(
+        self,
+        subject: str,
+        level: str,
+        days: int,
+        hours_per_day: float,
+    ) -> List[Dict]:
         """
-        Generate study topics for a given subject.
-        
-        Args:
-            subject: Subject name (e.g., "Data Structures", "Python")
-            level: Difficulty level ("Beginner", "Intermediate", "Advanced")
-            num_topics: Number of topics to generate (default: 8)
-        
+        Generate a structured day-by-day study plan using LangChain + Gemini.
+
         Returns:
-            List of topic strings
-        
-        Example:
-            >>> gen = TopicGenerator()
-            >>> topics = gen.generate_topics("DSA", "Beginner")
-            >>> print(topics)
-            ['1. Arrays - ...',  '2. Linked Lists - ...', ...]
-        """
-        prompt = f"""Generate exactly {num_topics} specific, actionable study topics for:
-Subject: {subject}
-Difficulty Level: {level}
-
-Format ONLY as a numbered list (no additional text):
-1. Topic Name - One sentence description
-2. Topic Name - One sentence description
-... and so on
-
-Requirements:
-- Each topic should be 2-3 words
-- Each description should be 1-2 sentences, practical and clear
-- Topics should progress from fundamentals to more advanced concepts
-- Topics should be concrete and actionable (not vague)
-
-START LISTING NOW:"""
-        
-        try:
-            response = self.model.generate_content(prompt)
-            topics = self._parse_topics(response.text)
-            
-            logger.info(f"✅ Generated {len(topics)} topics for {subject}")
-            return topics
-        
-        except Exception as e:
-            logger.error(f"❌ Error generating topics: {str(e)}")
-            return self._get_fallback_topics(subject)
-    
-    def generate_learning_path(self, subject: str, duration_days: int = 7,
-                               hours_per_day: int = 2) -> Dict:
-        """
-        Generate a multi-day learning path with daily topics.
-        
-        Args:
-            subject: Subject name
-            duration_days: Number of days for the learning path (1-30)
-            hours_per_day: Study hours per day
-        
-        Returns:
-            Dictionary with daily breakdown
-        
-        Example:
-            >>> path = gen.generate_learning_path("Python Basics", 5)
-            >>> print(path['day_1'])
-            {'topics': ['...', '...'], 'hours': 2, 'objectives': ['...']}
-        """
-        prompt = f"""Create a {duration_days}-day learning path for {subject}.
-Study Schedule: {hours_per_day} hours per day
-
-For each day, provide:
-- 3-4 topics to cover
-- Estimated study hours (typically {hours_per_day})
-- Learning objectives (2-3 specific outcomes)
-
-Format as plain text (no JSON):
-
-DAY 1:
-Topics: topic1, topic2, topic3
-Hours: {hours_per_day}
-Objectives: 
-- objective 1
-- objective 2
-
-DAY 2:
-... and so on"""
-        
-        try:
-            response = self.model.generate_content(prompt)
-            return {
-                'subject': subject,
-                'duration_days': duration_days,
-                'hours_per_day': hours_per_day,
-                'daily_plan': response.text
-            }
-        
-        except Exception as e:
-            logger.error(f"❌ Error generating learning path: {str(e)}")
-            return self._get_fallback_learning_path(subject, duration_days)
-    
-    def generate_flashcard_questions(self, topic: str, 
-                                    num_questions: int = 10) -> List[Dict]:
-        """
-        Generate flashcard Q&A pairs for a topic.
-        
-        Args:
-            topic: Topic name
-            num_questions: Number of Q&A pairs to generate
-        
-        Returns:
-            List of {'question': ..., 'answer': ...} dicts
-        """
-        prompt = f"""Generate {num_questions} flashcard Q&A pairs for: {topic}
-
-Format each as:
-Q: Question text
-A: Answer text
-
-Make questions progressively harder and include:
-- Definition questions
-- Application questions
-- Analysis questions
-- Comparison questions
-
-START:"""
-        
-        try:
-            response = self.model.generate_content(prompt)
-            flashcards = self._parse_flashcards(response.text)
-            logger.info(f"✅ Generated {len(flashcards)} flashcard Q&As")
-            return flashcards
-        
-        except Exception as e:
-            logger.error(f"❌ Error generating flashcards: {str(e)}")
-            return []
-    
-    @staticmethod
-    def _parse_topics(text: str) -> List[str]:
-        """Parse AI response into topic list"""
-        topics = []
-        for line in text.strip().split('\n'):
-            line = line.strip()
-            # Match lines starting with numbers: "1. Topic - Description"
-            if line and (line[0].isdigit() or line.startswith('-')):
-                topics.append(line)
-        
-        return topics if topics else ["No topics generated"]
-    
-    @staticmethod
-    def _parse_flashcards(text: str) -> List[Dict]:
-        """Parse AI response into flashcard Q&A pairs"""
-        flashcards = []
-        current_q = None
-        
-        for line in text.strip().split('\n'):
-            line = line.strip()
-            if line.startswith('Q:'):
-                if current_q:  # Save previous pair
-                    # This shouldn't happen in well-formatted output
-                    pass
-                current_q = line[2:].strip()
-            elif line.startswith('A:') and current_q:
-                answer = line[2:].strip()
-                flashcards.append({
-                    'question': current_q,
-                    'answer': answer
-                })
-                current_q = None
-        
-        return flashcards
-    
-    @staticmethod
-    def _get_fallback_topics(subject: str) -> List[str]:
-        """Fallback topics if AI fails (offline mode)"""
-        fallback_topics = {
-            "data structures": [
-                "1. Arrays - Ordered collections with fixed size",
-                "2. Linked Lists - Sequential data with pointers",
-                "3. Stacks - LIFO data structure for function calls",
-                "4. Queues - FIFO data structure for scheduling",
-                "5. Binary Trees - Hierarchical data organization",
-                "6. Hash Tables - Fast key-value lookup",
-                "7. Graphs - Networks of connected nodes",
-                "8. Tries - Efficient string searching"
-            ],
-            "python": [
-                "1. Variables and Data Types - Strings, ints, floats",
-                "2. Control Flow - If/else, loops, exceptions",
-                "3. Functions - Reusable code blocks with parameters",
-                "4. Lists and Dictionaries - Built-in collection types",
-                "5. File I/O - Reading and writing files",
-                "6. Object-Oriented Programming - Classes and inheritance",
-                "7. Modules and Packages - Organizing code",
-                "8. Debugging - Finding and fixing errors"
+            List of day dicts:
+            [
+              {
+                "day": 1,
+                "topics": [
+                  {"name": "Arrays - Indexing and slicing", "completed": false, "hours": 1.0},
+                  ...
+                ]
+              },
+              ...
             ]
-        }
-        
-        key = subject.lower()
-        return fallback_topics.get(key, [f"Topic {i+1} for {subject}" for i in range(8)])
-    
+        """
+        if not self.llm:
+            logger.warning("LLM not available — using static fallback plan")
+            return self._fallback_plan(subject, level, days, hours_per_day)
+
+        # --- Build LangChain prompt ---
+        prompt_template = ChatPromptTemplate.from_messages([
+            (
+                "system",
+                (
+                    "You are an expert study plan designer. "
+                    "Always respond with valid JSON only — no markdown, no explanation. "
+                    "The JSON must be a list of day objects."
+                ),
+            ),
+            (
+                "human",
+                """Create a {days}-day study plan for:
+Subject: {subject}
+Level: {level}
+Hours per day: {hours} hours
+
+Return ONLY a valid JSON array. Each element must have this exact structure:
+{{
+  "day": <integer day number starting at 1>,
+  "topics": [
+    {{"name": "<topic name - short description>", "completed": false, "hours": <float>}},
+    ...
+  ]
+}}
+
+Rules:
+- Topics per day: 2-3 (distribute hours evenly across topics)
+- Topic names should be specific and actionable (e.g. "Binary Search - Iterative & Recursive")
+- Total hours in each day must equal {hours}
+- Progress from fundamentals to advanced across the {days} days
+- Return ONLY the JSON array, nothing else.
+""",
+            ),
+        ])
+
+        chain = prompt_template | self.llm | StrOutputParser()
+
+        try:
+            raw = chain.invoke({
+                "subject": subject,
+                "level": level,
+                "days": days,
+                "hours": hours_per_day,
+            })
+            plan = self._parse_json_plan(raw, days, hours_per_day)
+            logger.info(f"✅ AI generated {len(plan)}-day plan for {subject} [{level}]")
+            return plan
+
+        except Exception as e:
+            logger.error(f"❌ AI plan generation failed: {e}")
+            return self._fallback_plan(subject, level, days, hours_per_day)
+
+    # -----------------------------------------------------------------------
+    # PUBLIC: Generate topic list
+    # -----------------------------------------------------------------------
+    def generate_topics(self, subject: str, level: str, num_topics: int = 8) -> List[str]:
+        """Generate a list of topic strings for a subject/level."""
+        if not self.llm:
+            return self._fallback_topics(subject, level)
+
+        prompt_template = ChatPromptTemplate.from_messages([
+            ("system", "You are a study curriculum expert. Return only a numbered list."),
+            ("human", (
+                "List exactly {num} specific study topics for:\n"
+                "Subject: {subject}\nLevel: {level}\n\n"
+                "Format: one topic per line as:\n"
+                "1. Topic Name - Brief description\n"
+                "Return only the numbered list."
+            )),
+        ])
+        chain = prompt_template | self.llm | StrOutputParser()
+
+        try:
+            raw = chain.invoke({"subject": subject, "level": level, "num": num_topics})
+            topics = [
+                line.strip()
+                for line in raw.strip().split("\n")
+                if line.strip() and (line.strip()[0].isdigit() or line.strip().startswith("-"))
+            ]
+            return topics if topics else self._fallback_topics(subject, level)
+        except Exception as e:
+            logger.error(f"❌ Topic generation failed: {e}")
+            return self._fallback_topics(subject, level)
+
+    # -----------------------------------------------------------------------
+    # PUBLIC: Generate flashcards
+    # -----------------------------------------------------------------------
+    def generate_flashcards(self, topic: str, num_cards: int = 5) -> List[Dict]:
+        """
+        Auto-generate flashcard Q&A pairs for a topic using Gemini.
+
+        Returns:
+            [{"question": "...", "answer": "..."}, ...]
+        """
+        if not self.llm:
+            return []
+
+        prompt_template = ChatPromptTemplate.from_messages([
+            ("system", "You are a flashcard creator. Return only valid JSON."),
+            ("human", (
+                "Generate {num} flashcard Q&A pairs for the topic: {topic}\n\n"
+                "Return ONLY a JSON array:\n"
+                '[{{"question": "...", "answer": "..."}}, ...]\n'
+                "Make questions test understanding, not just recall."
+            )),
+        ])
+        chain = prompt_template | self.llm | StrOutputParser()
+
+        try:
+            raw = chain.invoke({"topic": topic, "num": num_cards})
+            cards = self._parse_json_list(raw)
+            logger.info(f"✅ Generated {len(cards)} flashcards for '{topic}'")
+            return cards
+        except Exception as e:
+            logger.error(f"❌ Flashcard generation failed: {e}")
+            return []
+
+    # -----------------------------------------------------------------------
+    # PRIVATE: Parse LLM JSON output → list of day dicts
+    # -----------------------------------------------------------------------
+    def _parse_json_plan(self, raw: str, days: int, hours: float) -> List[Dict]:
+        """Extract and validate JSON plan from LLM response."""
+        # Strip markdown code fences if present
+        cleaned = re.sub(r"```(?:json)?", "", raw).strip().rstrip("```").strip()
+
+        try:
+            data = json.loads(cleaned)
+            if isinstance(data, list):
+                validated = []
+                for i, day_obj in enumerate(data):
+                    day_num = day_obj.get("day", i + 1)
+                    topics = day_obj.get("topics", [])
+                    if not isinstance(topics, list):
+                        topics = []
+                    # Ensure each topic has required fields
+                    clean_topics = []
+                    for t in topics:
+                        if isinstance(t, dict) and "name" in t:
+                            clean_topics.append({
+                                "name": str(t["name"]),
+                                "completed": False,
+                                "hours": float(t.get("hours", hours / max(len(topics), 1))),
+                            })
+                    validated.append({"day": day_num, "topics": clean_topics})
+                return validated
+        except (json.JSONDecodeError, ValueError, TypeError) as e:
+            logger.warning(f"⚠️  JSON parse failed ({e}), using fallback")
+
+        return self._fallback_plan("Unknown", "Beginner", days, hours)
+
+    def _parse_json_list(self, raw: str) -> List[Dict]:
+        """Parse a JSON list from LLM output."""
+        cleaned = re.sub(r"```(?:json)?", "", raw).strip().rstrip("```").strip()
+        try:
+            data = json.loads(cleaned)
+            if isinstance(data, list):
+                return data
+        except Exception:
+            pass
+        return []
+
+    # -----------------------------------------------------------------------
+    # PRIVATE: Fallback plan (static, no API needed)
+    # -----------------------------------------------------------------------
     @staticmethod
-    def _get_fallback_learning_path(subject: str, days: int) -> Dict:
-        """Fallback learning path if AI fails"""
-        return {
-            'subject': subject,
-            'duration_days': days,
-            'hours_per_day': 2,
-            'daily_plan': f"Learning plan for {subject} over {days} days - (Offline mode)"
-        }
+    def _fallback_plan(subject: str, level: str, days: int, hours: float) -> List[Dict]:
+        """Return a generic plan when AI is unavailable."""
+        hours_per_topic = round(hours / 2, 1)
+        return [
+            {
+                "day": day,
+                "topics": [
+                    {"name": f"{subject} - Topic {day}.{t}", "completed": False, "hours": hours_per_topic}
+                    for t in range(1, 3)
+                ],
+            }
+            for day in range(1, days + 1)
+        ]
+
+    @staticmethod
+    def _fallback_topics(subject: str, level: str) -> List[str]:
+        """Return generic topics when AI is unavailable."""
+        return [
+            f"1. {subject} Fundamentals - Core concepts and principles",
+            f"2. {subject} Intermediate - Building on basics",
+            f"3. {subject} Advanced - Complex topics and applications",
+            f"4. {subject} Practice - Exercises and projects",
+        ]
 
 
-# Singleton instance for use in Flask
-_generator = None
+# ---------------------------------------------------------------------------
+# Singleton
+# ---------------------------------------------------------------------------
+_service: Optional[AIStudyService] = None
 
 
-def get_topic_generator() -> TopicGenerator:
-    """Get or create topic generator instance"""
-    global _generator
-    if not _generator:
-        _generator = TopicGenerator()
-    return _generator
+def get_ai_service() -> AIStudyService:
+    """Get or create the AI service singleton."""
+    global _service
+    if _service is None:
+        _service = AIStudyService()
+    return _service
 
 
-# Test the module
+# ---------------------------------------------------------------------------
+# Quick test
+# ---------------------------------------------------------------------------
 if __name__ == "__main__":
-    # Test locally: python ai_service.py
-    import os
     from dotenv import load_dotenv
-    
     load_dotenv()
-    
-    print("🤖 Testing AI Service Module...")
-    print("=" * 60)
-    
-    try:
-        gen = TopicGenerator()
-        
-        # Test 1: Generate topics
-        print("\n📚 Test 1: Generate Topics")
-        print("-" * 60)
-        topics = gen.generate_topics("Web Development", "Beginner", 5)
-        for topic in topics:
-            print(f"  {topic}")
-        
-        # Test 2: Learning path
-        print("\n📅 Test 2: Generate Learning Path")
-        print("-" * 60)
-        path = gen.generate_learning_path("JavaScript", 3)
-        print(path['daily_plan'][:300] + "...")
-        
-        # Test 3: Flashcards
-        print("\n🎴 Test 3: Generate Flashcards")
-        print("-" * 60)
-        flashcards = gen.generate_flashcard_questions("React Hooks", 3)
-        for i, card in enumerate(flashcards, 1):
-            print(f"  Card {i}:")
-            print(f"    Q: {card['question']}")
-            print(f"    A: {card['answer']}")
-        
-        print("\n✅ All tests passed!")
-    
-    except Exception as e:
-        print(f"\n❌ Test failed: {e}")
-        print("\n💡 Make sure you have:")
-        print("  1. GEMINI_API_KEY in .env file")
-        print("  2. pip install google-generativeai")
+
+    print("🤖 Testing LangChain AI Service...")
+    svc = AIStudyService()
+
+    plan = svc.generate_study_plan("DSA", "Beginner", days=3, hours_per_day=2)
+    print("\n📅 Generated Plan:")
+    for day in plan:
+        print(f"  Day {day['day']}:")
+        for t in day["topics"]:
+            print(f"    - {t['name']} ({t['hours']}h)")
+
+    cards = svc.generate_flashcards("Binary Search Trees", num_cards=3)
+    print("\n🃏 Generated Flashcards:")
+    for c in cards:
+        print(f"  Q: {c.get('question')}")
+        print(f"  A: {c.get('answer')}\n")
