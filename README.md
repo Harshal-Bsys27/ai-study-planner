@@ -1,6 +1,7 @@
 # AI Study Planner
 
 A full-stack web application for creating personalized study plans and tracking learning progress.
+UPGRADE IN PROGRESS
 
 **🔗[Live Demo](https://ai-study-planner-frontend.onrender.com)** 
 
