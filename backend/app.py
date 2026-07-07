@@ -1,4 +1,5 @@
 import os
+import logging
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from datetime import datetime, timedelta
@@ -9,9 +10,14 @@ from sqlalchemy import func, text
 
 from models import db, User, StudyPlan, UserProgress, StudyNotes, StudySession, Flashcard, PomodoroSession, StudyStreak
 from config import get_config
-from ai_service import get_ai_service
+from ai_service import get_ai_service, get_provider_by_name
+import json
 
 load_dotenv(override=True)
+
+# Setup logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 
 def create_app():
@@ -19,6 +25,9 @@ def create_app():
 
     env = os.getenv("FLASK_ENV", "production")
     app.config.from_object(get_config(env))
+    
+    logger.info(f"🔧 SECRET_KEY: {app.config['SECRET_KEY'][:20]}...")
+    logger.info(f"🔧 Environment: {env}")
 
     # -------------------------------
     # INIT EXTENSIONS
@@ -40,11 +49,16 @@ def create_app():
         @wraps(f)
         def decorated(*args, **kwargs):
             auth_header = request.headers.get("Authorization")
+            logger.debug(f"🔍 Auth check - Authorization header: {auth_header[:50] if auth_header else 'MISSING'}...")
+            logger.debug(f"🔍 All headers: {dict(request.headers)}")
+            logger.debug(f"🔍 SECRET_KEY being used: {app.config['SECRET_KEY'][:20]}...")
 
             if not auth_header or not auth_header.startswith("Bearer "):
+                logger.error(f"❌ Token missing or invalid format: {auth_header[:50] if auth_header else 'MISSING'}")
                 return jsonify({"error": "Token missing"}), 401
 
             token = auth_header.split(" ")[1]
+            logger.debug(f"🔍 Token to decode: {token[:50]}...")
 
             try:
                 data = jwt.decode(
@@ -53,17 +67,23 @@ def create_app():
                     algorithms=["HS256"]
                 )
                 current_user_id = data["user_id"]
+                logger.debug(f"✅ Token valid for user {current_user_id}")
             except jwt.ExpiredSignatureError:
+                logger.error(f"❌ Token expired")
                 return jsonify({"error": "Token expired"}), 401
-            except Exception:
+            except Exception as e:
+                logger.error(f"❌ Invalid token: {str(e)}")
                 return jsonify({"error": "Invalid token"}), 401
 
             current_user = User.query.get(current_user_id)
             if not current_user:
+                logger.error(f"❌ User {current_user_id} not found")
                 return jsonify({"error": "User not found"}), 404
             if not current_user.is_active:
+                logger.error(f"❌ User {current_user_id} account disabled")
                 return jsonify({"error": "Account disabled"}), 403
 
+            logger.debug(f"✅ Auth successful for user {current_user_id}")
             return f(current_user_id, *args, **kwargs)
         return decorated
 
@@ -139,10 +159,13 @@ def create_app():
             db.session.add(user)
             db.session.commit()
 
+            # Create expiration as Unix timestamp (required by PyJWT)
+            exp_timestamp = int((datetime.utcnow() + timedelta(days=7)).timestamp())
+
             token = jwt.encode(
                 {
                     "user_id": user.id,
-                    "exp": datetime.utcnow() + timedelta(days=7),
+                    "exp": exp_timestamp,
                 },
                 app.config["SECRET_KEY"],
                 algorithm="HS256",
@@ -170,22 +193,34 @@ def create_app():
             data = request.json or {}
             username = data.get("username")
             password = data.get("password")
+            
+            logger.info(f"🔐 Login attempt for user: {username}")
 
             user = User.query.filter_by(username=username).first()
             if not user or not user.check_password(password):
+                logger.error(f"❌ Invalid credentials for {username}")
                 return jsonify({"error": "Invalid credentials"}), 401
 
             if not user.is_active:
+                logger.error(f"❌ Account disabled for {username}")
                 return jsonify({"error": "Account disabled"}), 403
+            
+            secret_key = app.config["SECRET_KEY"]
+            logger.info(f"🔑 Using SECRET_KEY: {secret_key[:20]}... for token creation")
+            
+            # Create expiration as Unix timestamp (required by PyJWT)
+            exp_timestamp = int((datetime.utcnow() + timedelta(days=7)).timestamp())
             
             token = jwt.encode(
                 {
                     "user_id": user.id,
-                    "exp": datetime.utcnow() + timedelta(days=7),
+                    "exp": exp_timestamp,
                 },
-                app.config["SECRET_KEY"],
+                secret_key,
                 algorithm="HS256"
             )
+            
+            logger.info(f"✅ Token created for user {user.id}: {token[:30]}... (exp: {exp_timestamp})")
             
             return jsonify({
                 "message": "Login successful",
@@ -199,6 +234,7 @@ def create_app():
                 }
             }), 200
         except Exception as e:
+            logger.error(f"❌ Login error: {str(e)}")
             return jsonify({"error": str(e)}), 500
 
     # ===============================
@@ -241,16 +277,31 @@ def create_app():
             days = int(data.get("days", 7))
             hours = float(data.get("hours", 2))
             level = data.get("level", "Beginner")
+            req_provider = data.get("provider", "").strip().lower()
+            req_model = data.get("model", "").strip()
 
-            # ── AI-powered plan generation via LangChain + Gemini ──
+            # ── AI-powered plan generation ──
             try:
-                ai = get_ai_service()
-                plan_data = ai.generate_study_plan(
-                    subject=subject,
-                    level=level,
-                    days=days,
-                    hours_per_day=hours,
-                )
+                if req_provider:
+                    provider = get_provider_by_name(req_provider, req_model or None)
+                    if not provider:
+                        raise Exception(f'Provider "{req_provider}" is not available.')
+                    plan_data = provider.generate_study_plan(
+                        subject=subject,
+                        level=level,
+                        days=days,
+                        hours_per_day=hours,
+                    )
+                else:
+                    ai = get_ai_service()
+                    if not ai.provider:
+                        raise Exception('No AI provider configured.')
+                    plan_data = ai.generate_study_plan(
+                        subject=subject,
+                        level=level,
+                        days=days,
+                        hours_per_day=hours,
+                    )
             except Exception as ai_err:
                 # Graceful fallback: static placeholder topics
                 import logging
@@ -355,7 +406,26 @@ def create_app():
 
             db.session.add(progress)
 
-            total_topics = sum(len(d["topics"]) for d in plan.plan_data)
+            # Support both AI format {"topic": str} and fallback format {"topics": [...]}
+            def count_topics(plan_data):
+                if isinstance(plan_data, str):
+                    try:
+                        plan_data = json.loads(plan_data)
+                    except:
+                        plan_data = []
+                if not isinstance(plan_data, list):
+                    return 0
+                    
+                total = 0
+                for d in plan_data:
+                    if isinstance(d, dict):
+                        if "topics" in d and isinstance(d["topics"], list):
+                            total += len(d["topics"])
+                        elif "topic" in d:
+                            total += 1
+                return total
+
+            total_topics = count_topics(plan.plan_data)
             completed_topics = UserProgress.query.filter_by(
                 plan_id=plan_id, completed=True
             ).count()
@@ -432,7 +502,26 @@ def create_app():
             if not plan:
                 return jsonify({"error": "Plan not found"}), 404
             
-            total_topics = sum(len(d["topics"]) for d in plan.plan_data)
+            # Support both AI format {"topic": str} and fallback format {"topics": [...]}
+            def count_topics(plan_data):
+                if isinstance(plan_data, str):
+                    try:
+                        plan_data = json.loads(plan_data)
+                    except:
+                        plan_data = []
+                if not isinstance(plan_data, list):
+                    return 0
+                    
+                total = 0
+                for d in plan_data:
+                    if isinstance(d, dict):
+                        if "topics" in d and isinstance(d["topics"], list):
+                            total += len(d["topics"])
+                        elif "topic" in d:
+                            total += 1
+                return total
+
+            total_topics = count_topics(plan.plan_data)
             completed_topics = UserProgress.query.filter_by(
                 plan_id=plan_id, completed=True
             ).count()
@@ -699,12 +788,14 @@ def create_app():
     @app.route('/api/ai/generate-flashcards', methods=['POST'])
     @token_required
     def ai_generate_flashcards(current_user_id):
-        """AI: Auto-generate flashcards for a topic using LangChain + Gemini"""
+        """AI: Auto-generate flashcards. Supports per-request provider/model selection."""
         try:
             data = request.json or {}
             plan_id = data.get('plan_id')
             topic = data.get('topic', '').strip()
             num_cards = min(int(data.get('num_cards', 5)), 10)  # max 10
+            req_provider = data.get('provider', '').strip().lower()  # optional: groq / gemini
+            req_model = data.get('model', '').strip()               # optional: specific model
 
             if not plan_id or not topic:
                 return jsonify({'error': 'plan_id and topic are required'}), 400
@@ -713,12 +804,31 @@ def create_app():
             if not plan:
                 return jsonify({'error': 'Plan not found'}), 404
 
-            # Call AI service
-            ai = get_ai_service()
-            cards_data = ai.generate_flashcards(topic=topic, num_cards=num_cards)
+            # Resolve provider: use per-request if specified, else fall back to default
+            combined_topic = f"{topic} (in the context of studying {plan.subject})"
+            try:
+                if req_provider:
+                    provider = get_provider_by_name(req_provider, req_model or None)
+                    if not provider:
+                        return jsonify({
+                            'error': f'Provider "{req_provider}" is not available. Check its API key in .env.'
+                        }), 503
+                    cards_data = provider.generate_flashcards(topic=combined_topic, num_cards=num_cards)
+                    used_provider = req_provider
+                else:
+                    ai = get_ai_service()
+                    if not ai.provider:
+                        return jsonify({'error': 'No AI provider configured. Add GROQ_API_KEY or GEMINI_API_KEY to .env'}), 503
+                    cards_data = ai.generate_flashcards(topic=combined_topic, num_cards=num_cards)
+                    used_provider = type(ai.provider).__name__.replace('Provider', '').lower()
 
-            if not cards_data:
-                return jsonify({'error': 'AI could not generate flashcards. Check GEMINI_API_KEY.'}), 503
+                if not cards_data:
+                    return jsonify({'error': 'Could not generate flashcards. Please try again.'}), 503
+
+            except Exception as ai_error:
+                error_msg = str(ai_error)
+                logger.error(f"AI service error: {error_msg}")
+                return jsonify({'error': error_msg}), 503
 
             # Save to DB
             saved = []
@@ -743,11 +853,13 @@ def create_app():
                 'message': f'✅ Generated {len(saved)} flashcards for "{topic}"',
                 'flashcards': saved,
                 'count': len(saved),
+                'provider': used_provider,
             }), 201
 
         except Exception as e:
             db.session.rollback()
-            return jsonify({'error': str(e)}), 500
+            logger.error(f"Flashcard generation error: {e}")
+            return jsonify({'error': f'Error: {str(e)[:100]}'}), 500
 
     # ==================== FLASHCARD ENDPOINTS ====================
     
@@ -895,6 +1007,60 @@ def create_app():
             db.session.rollback()
             return jsonify({'error': str(e)}), 500
 
+    # ==================== SETTINGS ENDPOINTS ====================
+    
+    @app.route('/api/settings/ai-model', methods=['POST'])
+    @token_required
+    def save_ai_model_settings(current_user_id):
+        """Save user's AI model preferences"""
+        try:
+            data = request.json or {}
+            user = User.query.get(current_user_id)
+            if not user:
+                return jsonify({'error': 'User not found'}), 404
+            
+            provider = data.get('provider', 'gemini').lower()
+            model = data.get('model', 'gemini-2.0-flash')
+            
+            # Validate provider
+            valid_providers = ['gemini', 'ollama', 'huggingface', 'openai']
+            if provider not in valid_providers:
+                return jsonify({'error': f'Invalid provider. Must be one of: {", ".join(valid_providers)}'}), 400
+            
+            user.ai_provider = provider
+            user.ai_model = model
+            db.session.commit()
+            
+            logger.info(f"User {current_user_id} switched to {provider}/{model}")
+            return jsonify({
+                'message': f'✅ Switched to {provider}',
+                'provider': provider,
+                'model': model,
+            }), 200
+            
+        except Exception as e:
+            db.session.rollback()
+            logger.error(f"Error saving AI settings: {e}")
+            return jsonify({'error': str(e)}), 500
+
+    @app.route('/api/settings/ai-model', methods=['GET'])
+    @token_required
+    def get_ai_model_settings(current_user_id):
+        """Get user's AI model preferences"""
+        try:
+            user = User.query.get(current_user_id)
+            if not user:
+                return jsonify({'error': 'User not found'}), 404
+            
+            return jsonify({
+                'provider': getattr(user, 'ai_provider', 'gemini'),
+                'model': getattr(user, 'ai_model', 'gemini-2.0-flash'),
+            }), 200
+            
+        except Exception as e:
+            logger.error(f"Error getting AI settings: {e}")
+            return jsonify({'error': str(e)}), 500
+
     return app
 
 
@@ -911,8 +1077,13 @@ def ensure_user_columns(app):
         if 'is_active' not in columns:
             db.session.execute(text("ALTER TABLE users ADD COLUMN is_active BOOLEAN DEFAULT 1"))
             db.session.execute(text("UPDATE users SET is_active = 1 WHERE is_active IS NULL"))
+        if 'ai_provider' not in columns:
+            db.session.execute(text("ALTER TABLE users ADD COLUMN ai_provider VARCHAR(50) DEFAULT 'gemini'"))
+        if 'ai_model' not in columns:
+            db.session.execute(text("ALTER TABLE users ADD COLUMN ai_model VARCHAR(100) DEFAULT 'gemini-2.0-flash'"))
 
         db.session.commit()
+
 
 
 def ensure_admin_user(app):
@@ -961,6 +1132,7 @@ if __name__ == '__main__':
             print(f"Database: {'SQLite' if env == 'development' else 'PostgreSQL'}")
             print(f"API: http://localhost:5000/api")
             print(f"Health: http://localhost:5000/api/health")
+            print(f"SECRET_KEY: {app.config['SECRET_KEY'][:20]}...")
             print("="*60 + "\n")
     
-    app.run(debug=(env == 'development'), host='0.0.0.0', port=5000)
+    app.run(debug=(env == 'development'), use_reloader=False, host='0.0.0.0', port=5000)

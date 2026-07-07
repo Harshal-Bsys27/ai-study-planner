@@ -14,6 +14,8 @@ class User(db.Model):
     password = db.Column(db.String(255), nullable=False)
     is_admin = db.Column(db.Boolean, default=False, nullable=False)
     is_active = db.Column(db.Boolean, default=True, nullable=False)
+    ai_provider = db.Column(db.String(50), default='gemini', nullable=False)
+    ai_model = db.Column(db.String(100), default='gemini-2.0-flash', nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
     # Relationships
