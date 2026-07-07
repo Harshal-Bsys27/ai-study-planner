@@ -327,23 +327,19 @@ function App() {
   useEffect(() => {
     const originalFetch = window.fetch;
     window.fetch = async (...args) => {
-      try {
-        const response = await originalFetch(...args);
-        // If 401 Unauthorized is returned, and it's not login/register
-        const url = typeof args[0] === 'string' ? args[0] : (args[0]?.url || '');
-        if (response.status === 401 && !url.includes('/api/login') && !url.includes('/api/register')) {
-          console.warn("🔐 Session expired or invalid token. Redirecting to login.");
-          // Clear auth and reset state
-          localStorage.removeItem('token');
-          localStorage.removeItem('user');
-          setIsAuthenticated(false);
-          setIsAdmin(false);
-          setCurrentUserId(null);
-        }
-        return response;
-      } catch (error) {
-        throw error;
+      const response = await originalFetch(...args);
+      // If 401 Unauthorized is returned, and it's not login/register
+      const url = typeof args[0] === 'string' ? args[0] : (args[0]?.url || '');
+      if (response.status === 401 && !url.includes('/api/login') && !url.includes('/api/register')) {
+        console.warn("🔐 Session expired or invalid token. Redirecting to login.");
+        // Clear auth and reset state
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        setIsAuthenticated(false);
+        setIsAdmin(false);
+        setCurrentUserId(null);
       }
+      return response;
     };
     return () => {
       window.fetch = originalFetch;
