@@ -153,6 +153,7 @@ const res = await fetch(`${API_URL}/api/register`, {
     setError('');
 
     try {
+      console.log('🔑 Login attempt:', { username, API_URL });
       const res = await fetch(`${API_URL}/api/login`,{
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -162,24 +163,27 @@ const res = await fetch(`${API_URL}/api/register`, {
       const data = await res.json();
 
       if (!res.ok) {
+        console.error('❌ Login failed:', data.error);
         setError(data.error || 'Login failed');
         return;
       }
 
-      console.log('🔑 API Response:', data);
+      console.log('✅ Login successful! Response:', { token: data.token ? 'exists' : 'missing', user: data.user });
 
       // Save token and user info
       localStorage.setItem('token', data.token);
       localStorage.setItem('user', JSON.stringify(data.user));
       
       console.log('💾 Saved to localStorage:', {
-        token: data.token,
-        user: data.user
+        token: localStorage.getItem('token') ? '✅ stored' : '❌ failed',
+        user: localStorage.getItem('user') ? '✅ stored' : '❌ failed'
       });
       
       // Call success callback with user data
       onLoginSuccess(data.user);
 
+    } catch (e) {
+      console.error('❌ Login exception:', e);
       setError('Network error. Make sure backend is running.');
     } finally {
       setLoading(false);

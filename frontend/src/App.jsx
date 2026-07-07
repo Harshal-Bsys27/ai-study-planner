@@ -323,6 +323,33 @@ function App() {
   const { mode, toggleMode } = useContext(ThemeModeContext);
   const isDarkMode = mode === "dark";
 
+  // Intercept all fetches to handle 401 globally (expired tokens)
+  useEffect(() => {
+    const originalFetch = window.fetch;
+    window.fetch = async (...args) => {
+      try {
+        const response = await originalFetch(...args);
+        // If 401 Unauthorized is returned, and it's not login/register
+        const url = typeof args[0] === 'string' ? args[0] : (args[0]?.url || '');
+        if (response.status === 401 && !url.includes('/api/login') && !url.includes('/api/register')) {
+          console.warn("🔐 Session expired or invalid token. Redirecting to login.");
+          // Clear auth and reset state
+          localStorage.removeItem('token');
+          localStorage.removeItem('user');
+          setIsAuthenticated(false);
+          setIsAdmin(false);
+          setCurrentUserId(null);
+        }
+        return response;
+      } catch (error) {
+        throw error;
+      }
+    };
+    return () => {
+      window.fetch = originalFetch;
+    };
+  }, []);
+
   // Get token from localStorage
   const getToken = () => {
     return localStorage.getItem('token');
@@ -332,14 +359,18 @@ function App() {
   const fetchStreak = useCallback(async () => {
     if (!isAuthenticated) return;
     try {
+      const token = getToken();
+      console.log('📊 fetchStreak - token:', token ? '✅ exists' : '❌ missing');
       const res = await fetch(`http://localhost:5000/api/stats/streak`, {
-        headers: { "Authorization": `Bearer ${getToken()}` }
+        headers: { "Authorization": `Bearer ${token}` }
       });
-      if (res.ok) {
+      if (!res.ok) {
+        console.error('❌ fetchStreak failed:', res.status, res.statusText);
+      } else {
         setStreakData(await res.json());
       }
     } catch (e) {
-      console.error(e);
+      console.error('❌ fetchStreak error:', e);
     }
   }, [isAuthenticated]);
 
@@ -583,8 +614,10 @@ function App() {
   useEffect(() => {
     const token = localStorage.getItem('token');
     const user = localStorage.getItem('user');
+    console.log('🔍 App startup check:', { token: token ? '✅ stored' : '❌ missing', user: user ? '✅ stored' : '❌ missing' });
     if (token && user) {
       const userData = JSON.parse(user);
+      console.log('🔑 Restoring session:', userData);
       setCurrentUserId(userData.id);
       setIsAdmin(!!userData.is_admin);
       setIsAuthenticated(true);
@@ -637,6 +670,7 @@ function App() {
 
   const handleLoginSuccess = (userData) => {
     console.log('🔐 Login Success - userData:', userData);
+    console.log('📦 Token in localStorage:', localStorage.getItem('token') ? '✅ stored' : '❌ not stored');
     setIsAuthenticated(true);
     if (userData) {
       setCurrentUserId(userData.id);
@@ -815,17 +849,30 @@ function App() {
 
       // Save to backend
       try {
-        console.log('📤 Saving plan to backend...');
+        const token = getToken();
+        console.log('💾 Saving plan - token:', token ? '✅ exists' : '❌ missing', 'token:', token ? token.substring(0, 20) + '...' : 'null');
+        const savedSettings = JSON.parse(localStorage.getItem("ai_model_settings") || "{}");
         const res = await fetch(`http://localhost:5000/api/generate-plan`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            "Authorization": `Bearer ${getToken()}`
+            "Authorization": `Bearer ${token}`
           },
           body: JSON.stringify({
-            subject, level, days, hours, plan_data: planData
+            subject, 
+            level, 
+            days, 
+            hours, 
+            plan_data: planData,
+            provider: savedSettings.provider || "",
+            model: savedSettings.model || ""
           })
         });
+        if (!res.ok) {
+          console.error('❌ Save plan failed:', res.status, res.statusText);
+          const errData = await res.json().catch(() => ({}));
+          console.error('Error response:', errData);
+        }
         if (res.ok) {
           const data = await res.json();
           newPlanId = data.id;
@@ -1470,7 +1517,7 @@ function App() {
         </MenuItem>
       </Menu>
 
-      <Container maxWidth="lg" sx={{ py: 3, px: 2 }}>
+      <Container maxWidth="lg" sx={{ py: { xs: 2, md: 3 }, px: { xs: 1.5, sm: 2, md: 3 } }}>
         <Box sx={{ mb: 3 }}>
           <Card
             className="fade-in"
@@ -1718,7 +1765,7 @@ function App() {
 
           {/* Form Controls */}
           <Grid container spacing={2.5}>
-            <Grid item xs={12} sm={6} md={2.5}>
+            <Grid item xs={12} sm={6} md={4} lg={2}>
               <FormControl fullWidth>
                 <InputLabel sx={{ fontSize: '0.9rem', fontWeight: 500 }}>Subject</InputLabel>
                 <Select
@@ -1743,7 +1790,7 @@ function App() {
               </FormControl>
             </Grid>
 
-            <Grid item xs={12} sm={6} md={1.8}>
+            <Grid item xs={12} sm={6} md={4} lg={2}>
               <TextField
                 label="Days"
                 type="number"
@@ -1761,7 +1808,7 @@ function App() {
               />
             </Grid>
 
-            <Grid item xs={12} sm={6} md={1.8}>
+            <Grid item xs={12} sm={6} md={4} lg={2}>
               <TextField
                 label="Hours/Day"
                 type="number"
@@ -1779,7 +1826,7 @@ function App() {
               />
             </Grid>
 
-            <Grid item xs={12} sm={6} md={2}>
+            <Grid item xs={12} sm={6} md={4} lg={2}>
               <FormControl fullWidth>
                 <InputLabel sx={{ fontSize: '0.9rem', fontWeight: 500 }}>Level</InputLabel>
                 <Select
@@ -1802,7 +1849,7 @@ function App() {
               </FormControl>
             </Grid>
 
-            <Grid item xs={12} sm={6} md={2}>
+            <Grid item xs={12} sm={6} md={4} lg={2}>
               <Button
                 fullWidth
                 variant="contained"
@@ -1824,7 +1871,7 @@ function App() {
               </Button>
             </Grid>
 
-            <Grid item xs={12} md={2}>
+            <Grid item xs={12} sm={6} md={4} lg={2}>
               <Button
                 fullWidth
                 variant="outlined"
@@ -2091,7 +2138,7 @@ function App() {
             <Box sx={{ 
               background: "linear-gradient(135deg, #064e3b 0%, #065f46 100%)",
               borderRadius: 3,
-              p: 3,
+              p: { xs: 2, md: 3 },
               mb: 4,
               border: "1px solid #047857"
             }}>
@@ -2100,12 +2147,14 @@ function App() {
               </Typography>
               <Grid container spacing={2.5} sx={{ alignItems: "stretch" }}>
                 <Grid item xs={12} md={4}>
-                  <Box sx={{ 
-                    transition: "all 0.3s ease",
-                    "&:hover": {
-                      transform: "translateY(-4px)"
-                    }
-                  }}>
+                  <Box
+                    className="active-tool-box"
+                    sx={{ 
+                      width: "100%",
+                      transition: "all 0.3s ease",
+                      "&:hover": { transform: "translateY(-4px)" }
+                    }}
+                  >
                     <PomodoroTimer 
                       planId={currentPlanId}
                       topic={subject}
@@ -2114,12 +2163,14 @@ function App() {
                   </Box>
                 </Grid>
                 <Grid item xs={12} md={4}>
-                  <Box sx={{ 
-                    transition: "all 0.3s ease",
-                    "&:hover": {
-                      transform: "translateY(-4px)"
-                    }
-                  }}>
+                  <Box
+                    className="active-tool-box"
+                    sx={{ 
+                      width: "100%",
+                      transition: "all 0.3s ease",
+                      "&:hover": { transform: "translateY(-4px)" }
+                    }}
+                  >
                     <StreakTracker 
                       streak={streakData}
                       onUpdateStreak={updateStreak}
@@ -2127,17 +2178,20 @@ function App() {
                   </Box>
                 </Grid>
                 <Grid item xs={12} md={4}>
-                  <Box sx={{ 
-                    transition: "all 0.3s ease",
-                    "&:hover": {
-                      transform: "translateY(-4px)"
-                    }
-                  }}>
+                  <Box
+                    className="active-tool-box"
+                    sx={{ 
+                      width: "100%",
+                      transition: "all 0.3s ease",
+                      "&:hover": { transform: "translateY(-4px)" }
+                    }}
+                  >
                     <FlashcardWidget 
                       planId={currentPlanId}
                       flashcards={flashcards}
                       onAddFlashcard={handleAddFlashcard}
                       onDeleteFlashcard={handleDeleteFlashcard}
+                      onFlashcardsGenerated={(newCards) => setFlashcards(prev => [...prev, ...newCards])}
                     />
                   </Box>
                 </Grid>
@@ -2148,7 +2202,7 @@ function App() {
             <Box sx={{ 
               background: "linear-gradient(135deg, #0f766e 0%, #115e59 100%)",
               borderRadius: 3,
-              p: 3,
+              p: { xs: 2, md: 3 },
               mb: 4,
               border: "1px solid #0d9488"
             }}>
@@ -2192,7 +2246,7 @@ function App() {
               ? "linear-gradient(135deg, #0a3a45 0%, #0f4a55 100%)"
               : "linear-gradient(135deg, #0e7490 0%, #155e75 100%)",
             borderRadius: 3,
-            p: 3,
+            p: { xs: 2, md: 3 },
             border: isDarkMode 
               ? "1px solid rgba(34, 197, 94, 0.2)" 
               : "1px solid #0891b2"
