@@ -329,3 +329,151 @@ html[data-theme="dark"] body {
   -webkit-text-fill-color: transparent;
   animation: shimmer 4s linear infinite;
 }
+
+/* ================================
+   RESPONSIVE UTILITIES
+================================ */
+
+/* Prevent horizontal scrolling globally */
+html, body {
+  overflow-x: hidden;
+  max-width: 100vw;
+}
+
+/* ---- MOBILE FIRST: xs (< 600px) ---- */
+@media (max-width: 599px) {
+
+  /* App-wide padding reduction */
+  .MuiContainer-root {
+    padding-left: 12px !important;
+    padding-right: 12px !important;
+  }
+
+  /* Reduce card padding */
+  .MuiCardContent-root {
+    padding: 14px !important;
+  }
+  .MuiCardContent-root:last-child {
+    padding-bottom: 14px !important;
+  }
+
+  /* Stack toolbar buttons */
+  .MuiToolbar-root {
+    flex-wrap: wrap;
+    gap: 4px;
+    min-height: 60px !important;
+  }
+
+  /* Make all Recharts charts shorter on mobile */
+  .recharts-wrapper {
+    height: 200px !important;
+  }
+
+  /* Admin table: allow horizontal scroll */
+  .MuiTableContainer-root {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Flashcard widget and active tools - auto height on mobile */
+  .active-tool-box {
+    height: auto !important;
+    min-height: 380px;
+  }
+
+  /* Typography scale down */
+  .MuiTypography-h2 {
+    font-size: 2rem !important;
+  }
+  .MuiTypography-h3 {
+    font-size: 1.6rem !important;
+  }
+  .MuiTypography-h4 {
+    font-size: 1.3rem !important;
+  }
+  .MuiTypography-h5 {
+    font-size: 1.1rem !important;
+  }
+  .MuiTypography-h6 {
+    font-size: 1rem !important;
+  }
+
+  /* Stack chips */
+  .MuiStack-root {
+    flex-wrap: wrap;
+  }
+
+  /* Pomodoro timer clock: reduce size */
+  .pomodoro-clock-text {
+    font-size: 2.5rem !important;
+  }
+}
+
+/* ---- TABLET: sm (600px - 899px) ---- */
+@media (min-width: 600px) and (max-width: 899px) {
+
+  /* Slightly less padding */
+  .MuiContainer-root {
+    padding-left: 16px !important;
+    padding-right: 16px !important;
+  }
+
+  /* Admin table scrollable */
+  .MuiTableContainer-root {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Active tools widget - allow flexible height on tablet */
+  .active-tool-box {
+    height: auto !important;
+    min-height: 400px;
+  }
+}
+
+/* ---- DESKTOP: md+ (900px+) ---- */
+@media (min-width: 900px) {
+  .active-tool-box {
+    height: 480px;
+  }
+}
+
+/* ================================
+   GLOBAL FIXES
+================================ */
+
+/* All images / media are responsive */
+img, video, canvas {
+  max-width: 100%;
+  height: auto;
+}
+
+/* Prevent long words / URLs from breaking layouts */
+p, span, li, td, th {
+  overflow-wrap: break-word;
+  word-break: break-word;
+}
+
+/* Tables always scrollable on small screens */
+.responsive-table-wrapper {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Dialog: max-width on mobile so it doesn't overflow */
+.MuiDialog-paper {
+  margin: 12px !important;
+  max-width: calc(100vw - 24px) !important;
+}
+
+/* Chip: don't overflow */
+.MuiChip-root {
+  max-width: 100%;
+  overflow: hidden;
+}
+
+/* Buttons: don't overflow */
+.MuiButton-root {
+  white-space: nowrap;
+}

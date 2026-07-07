@@ -147,7 +147,7 @@ const PomodoroTimer = ({ planId, topic, onSessionComplete }) => {
           {state.isBreak ? "🎵 Break Time" : "⏲️ Focus Time"}
         </Typography>
 
-        <Typography variant="h2" sx={{ fontWeight: "bold", my: 3, fontFamily: "monospace" }}>
+        <Typography variant="h2" sx={{ fontWeight: "bold", my: { xs: 1.5, md: 3 }, fontFamily: "monospace", fontSize: { xs: "2.5rem", md: "3.75rem" } }}>
           {formatTime(state.timeLeft)}
         </Typography>
 

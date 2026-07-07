@@ -414,7 +414,7 @@ const AdminDashboard = ({ token, onLogout, onBack }) => {
         </Toolbar>
       </AppBar>
 
-      <Container maxWidth="xl" className="admin-content" sx={{ py: 4, background: isDarkMode ? "linear-gradient(135deg, rgba(5, 18, 11, 0.95), rgba(8, 25, 16, 0.95))" : "transparent" }}>
+      <Container maxWidth="xl" className="admin-content" sx={{ py: { xs: 2, md: 4 }, px: { xs: 1.5, sm: 2, md: 3 }, background: isDarkMode ? "linear-gradient(135deg, rgba(5, 18, 11, 0.95), rgba(8, 25, 16, 0.95))" : "transparent" }}>
         <Box
           sx={{
             display: "flex",
@@ -852,6 +852,7 @@ const AdminDashboard = ({ token, onLogout, onBack }) => {
                 <CircularProgress />
               </Box>
             ) : (
+            <div className="responsive-table-wrapper">
               <TableContainer
                 component={Paper}
                 elevation={0}
@@ -971,6 +972,7 @@ const AdminDashboard = ({ token, onLogout, onBack }) => {
                   </TableBody>
                 </Table>
               </TableContainer>
+            </div>
             )}
           </CardContent>
         </Card>
