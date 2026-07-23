@@ -22,4 +22,4 @@ services:
     staticPublishPath: frontend/dist
     envVars:
       - key: VITE_API_URL
-        value: https://ai-study-planner-backend.onrender.com/api
+        value: https://ai-study-planner-backend.onrender.com
