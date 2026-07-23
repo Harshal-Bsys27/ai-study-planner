@@ -48,13 +48,24 @@ def create_app():
     
     logger.info(f"🔒 Allowed CORS Origins: {allowed_origins}")
 
-    CORS(
-        app,
-        resources={r"/api/*": {"origins": allowed_origins}},
-        supports_credentials=True,
-        allow_headers=["Authorization", "Content-Type"],
-        methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    )
+    # Manual robust CORS handling to avoid any preflight or credentials mismatch issues
+    @app.before_request
+    def handle_options_preflight():
+        if request.method == 'OPTIONS':
+            return '', 200
+
+    @app.after_request
+    def add_cors_headers(response):
+        origin = request.headers.get('Origin')
+        if origin:
+            response.headers['Access-Control-Allow-Origin'] = origin
+        else:
+            response.headers['Access-Control-Allow-Origin'] = '*'
+        
+        response.headers['Access-Control-Allow-Headers'] = 'Authorization, Content-Type, Accept, Origin'
+        response.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, OPTIONS'
+        response.headers['Access-Control-Allow-Credentials'] = 'true'
+        return response
 
     # ===============================
     # AUTH DECORATORS
