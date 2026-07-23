@@ -10,7 +10,7 @@ services:
       - key: SECRET_KEY
         generateValue: true
       - key: CORS_ORIGINS
-        value: https://ai-study-planner.onrender.com
+        value: https://ai-study-planner-frontend.onrender.com
     disk:
       name: study_planner_db
       mountPath: /opt/render/project/backend

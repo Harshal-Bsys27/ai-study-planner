@@ -34,9 +34,23 @@ def create_app():
     # -------------------------------
     db.init_app(app)
 
+    # Configure CORS origins dynamically
+    cors_env = os.getenv("CORS_ORIGINS", "")
+    allowed_origins = [o.strip() for o in cors_env.split(",") if o.strip()]
+    if not allowed_origins:
+        # Fallback defaults for dev and production
+        allowed_origins = [
+            "http://localhost:5173",
+            "http://127.0.0.1:5173",
+            "http://localhost:3000",
+            "https://ai-study-planner-frontend.onrender.com"
+        ]
+    
+    logger.info(f"🔒 Allowed CORS Origins: {allowed_origins}")
+
     CORS(
         app,
-        resources={r"/api/*": {"origins": "*"}},
+        resources={r"/api/*": {"origins": allowed_origins}},
         supports_credentials=True,
         allow_headers=["Authorization", "Content-Type"],
         methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
