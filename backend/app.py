@@ -1115,24 +1115,28 @@ def ensure_admin_user(app):
             print(f"[!] Error ensuring admin user: {e}")
 
 
+# Create app at module level so gunicorn can import it as `app:app`
+app = create_app()
+
+# Initialize database and admin on startup
+with app.app_context():
+    db.create_all()
+    ensure_user_columns(app)
+    ensure_admin_user(app)
+
+
 if __name__ == '__main__':
     env = os.getenv('FLASK_ENV', 'development')
-    app = create_app()
-    
-    if env == "development":
-        with app.app_context():
-            db.create_all()
-            ensure_user_columns(app)
-            ensure_admin_user(app)
 
-            print("\n" + "="*60)
-            print("AI Study Planner Backend Started")
-            print("="*60)
-            print(f"Environment: {env.upper()}")
-            print(f"Database: {'SQLite' if env == 'development' else 'PostgreSQL'}")
-            print(f"API: http://localhost:5000/api")
-            print(f"Health: http://localhost:5000/api/health")
-            print(f"SECRET_KEY: {app.config['SECRET_KEY'][:20]}...")
-            print("="*60 + "\n")
-    
+    if env == "development":
+        print("\n" + "="*60)
+        print("AI Study Planner Backend Started")
+        print("="*60)
+        print(f"Environment: {env.upper()}")
+        print(f"Database: {'SQLite' if env == 'development' else 'PostgreSQL'}")
+        print(f"API: http://localhost:5000/api")
+        print(f"Health: http://localhost:5000/api/health")
+        print(f"SECRET_KEY: {app.config['SECRET_KEY'][:20]}...")
+        print("="*60 + "\n")
+
     app.run(debug=(env == 'development'), use_reloader=False, host='0.0.0.0', port=5000)
